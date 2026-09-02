@@ -1,0 +1,33 @@
+{% extends "PgGsbFraisBundle::accueil.html.twig" %}
+{% block body %}
+{% block bloc1 %}
+<div id="contenu">
+      <h2>Mes fiches de frais</h2>
+      <h3>Mois à sélectionner : </h3>
+      <form  method="post">
+      <div class="corpsForm">
+      <p>
+	<label for="lstMois" accesskey="n">Mois : </label>
+        <select id="lstMois" name="lstMois">
+             {% for unMois in  lesmois %}
+                  {% set mois = unMois.mois %}
+                  {% set numAnnee =  unMois.numAnnee %}
+                  {% set numMois =  unMois.numMois%}
+                  {% if mois == lemois %}
+                        <option selected value="{{ mois }}">{{ numMois }}/{{ numAnnee }} </option>
+                  {% else %}
+                        <option value="{{ mois }}">{{ numMois }}/{{ numAnnee }} </option>
+                  {% endif %}
+            {% endfor %}  
+       </select>
+      </p>
+      </div>
+      <div class="piedForm">
+      <p>
+            <input id="ok" type="submit" value="Valider" size="20" />
+            <input id="annuler" type="reset" value="Effacer" size="20" />
+      </p> 
+      </div>
+        </form>
+{% endblock %}
+{% endblock %}

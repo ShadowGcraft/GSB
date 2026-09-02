@@ -1,0 +1,121 @@
+/* ---------------------------------------------------------------------------
+   Feuille de style de l'application GSB de 2013.
+
+   ATTENTION : ce fichier ne figure PAS dans l'archive fournie. Les gabarits
+   Twig le réclament (bundles/gsbfrais/styles/styles.css) mais le dossier
+   Resources/public du bundle est absent de l'archive, tout comme le logo.
+   Sans cette feuille, l'application s'affiche sans aucune mise en forme.
+
+   Elle est donc reconstituée ici, à partir des seuls identifiants et classes
+   employés par les gabarits : #page, #entete, #logoGSB, #menuGauche,
+   #infosUtil, #menuList, .smenu, #contenu, .encadre, .listeLegere,
+   .qteForfait, .corpsForm, .piedForm, .erreur.
+   Elle vise la sobriété et la lisibilité, pas la fidélité graphique : le
+   rendu d'origine n'est documenté nulle part.
+   --------------------------------------------------------------------------- */
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    color: #23303f;
+    background: #eef1f5;
+}
+
+/* --- en-tête ------------------------------------------------------------ */
+
+#page   { background: #1f3b63; color: #fff; }
+#entete { max-width: 1100px; margin: 0 auto; padding: 18px 24px; display: flex;
+          align-items: center; gap: 18px; }
+#logoGSB { height: 52px; }
+#entete h1 { font-size: 22px; font-weight: 600; margin: 0; }
+
+/* --- menu de gauche ----------------------------------------------------- */
+
+/* Le menu est fixe plutôt que flottant : la page de saisie enchaîne deux blocs
+   #contenu successifs, et un menu flottant n'aurait décalé que le premier. */
+#menuGauche {
+    position: fixed; top: 112px; left: 24px; width: 210px; padding: 16px;
+    background: #fff; border: 1px solid #d3dae4; border-radius: 6px;
+}
+#infosUtil h3 { margin: 0 0 12px; font-size: 14px; color: #1f3b63;
+                border-bottom: 1px solid #e2e7ee; padding-bottom: 10px; }
+#menuList { list-style: none; margin: 0; padding: 0; }
+.smenu { margin-bottom: 6px; }
+.smenu a {
+    display: block; padding: 8px 10px; border-radius: 4px;
+    color: #1f3b63; text-decoration: none; font-size: 13px;
+}
+.smenu a:hover { background: #eef2f8; }
+
+/* --- contenu ------------------------------------------------------------ */
+
+#contenu {
+    margin: 24px 24px 24px 270px; padding: 22px 26px;
+    background: #fff; border: 1px solid #d3dae4; border-radius: 6px;
+}
+#contenu h2 { margin: 0 0 18px; font-size: 19px; color: #1f3b63; }
+#contenu h3 { font-size: 15px; color: #1f3b63; margin: 22px 0 10px; }
+
+/* La page de connexion n'affiche pas de menu : le contenu reprend la largeur. */
+body:not(:has(#menuGauche)) #contenu { margin-left: 24px; max-width: 560px; }
+
+.encadre {
+    border: 1px solid #d3dae4; border-left: 4px solid #1f3b63;
+    border-radius: 4px; padding: 12px 16px; margin-bottom: 18px;
+    background: #f8fafc;
+}
+
+/* --- tableaux ----------------------------------------------------------- */
+
+.listeLegere { width: 100%; border-collapse: collapse; margin-bottom: 22px; }
+.listeLegere caption {
+    text-align: left; font-weight: 600; color: #1f3b63;
+    padding-bottom: 8px; font-size: 14px;
+}
+.listeLegere th, .listeLegere td {
+    border: 1px solid #d9dfe8; padding: 7px 10px; text-align: left; font-size: 13px;
+}
+.listeLegere th { background: #1f3b63; color: #fff; font-weight: 600; }
+.listeLegere tr:nth-child(even) td { background: #f6f8fb; }
+.listeLegere td.montant, .listeLegere th.montant { text-align: right; }
+.qteForfait { text-align: center; font-weight: 600; }
+
+/* --- formulaires -------------------------------------------------------- */
+
+.corpsForm { margin-bottom: 14px; }
+.corpsForm fieldset {
+    border: 1px solid #d9dfe8; border-radius: 4px; padding: 14px 18px; margin: 0;
+}
+.corpsForm legend { color: #1f3b63; font-weight: 600; padding: 0 6px; }
+label { display: inline-block; min-width: 190px; }
+input[type=text], input[type=password], select {
+    padding: 6px 8px; border: 1px solid #c3ccd9; border-radius: 3px;
+    font-size: 13px; font-family: inherit;
+}
+input[type=text]:focus, input[type=password]:focus, select:focus {
+    outline: none; border-color: #1f3b63;
+}
+.piedForm { margin-top: 14px; }
+input[type=submit], input[type=reset] {
+    padding: 7px 16px; border-radius: 3px; font-size: 13px; cursor: pointer;
+    border: 1px solid #1f3b63;
+}
+input[type=submit] { background: #1f3b63; color: #fff; }
+input[type=reset]  { background: #fff; color: #1f3b63; margin-left: 8px; }
+
+/* --- messages d'erreur -------------------------------------------------- */
+
+.erreur {
+    background: #fdf0f0; border: 1px solid #e3b8b8; border-left: 4px solid #9b2c2c;
+    color: #9b2c2c; border-radius: 4px; padding: 10px 16px;
+    margin: 0 24px 16px 270px;
+}
+.erreur ul { margin: 0; padding-left: 18px; }
+
+/* Le gabarit erreurs.html.twig est inclus meme quand la liste d'erreurs est
+   vide : il produit alors un bandeau rouge sans texte. On le masque. */
+.erreur:has(ul:empty) { display: none; }
+
+a { color: #1f3b63; }
+p { margin: 10px 0; }

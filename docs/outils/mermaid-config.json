@@ -1,0 +1,1 @@
+{ "theme": "neutral", "themeVariables": { "fontFamily": "Helvetica, Arial, sans-serif", "fontSize": "15px", "primaryColor": "#eef2f8", "primaryTextColor": "#1f3b63", "primaryBorderColor": "#1f3b63", "lineColor": "#4a5568" }, "flowchart": { "curve": "basis", "nodeSpacing": 45, "rankSpacing": 55 } }

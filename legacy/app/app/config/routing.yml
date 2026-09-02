@@ -1,0 +1,14 @@
+# Seules les routes de l'application GSB de 2013 sont chargees.
+# Le bundle de demonstration AppBundle, livre avec le squelette Symfony, declare
+# ses routes par annotations ; son chargeur casse sur PHP 7.4 et il ne sert a rien ici.
+pg_gsb_frais:
+    resource: '@PgGsbFraisBundle/Resources/config/routing.yml'
+
+# La racine du site n'est routee nulle part dans le bundle de 2013 : on la
+# redirige vers l'accueil, pour que http://localhost:8080/ ouvre l'application.
+racine:
+    path: /
+    defaults:
+        _controller: FrameworkBundle:Redirect:redirect
+        route: pg_gsb_frais_home
+        permanent: false

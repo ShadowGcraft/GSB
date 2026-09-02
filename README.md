@@ -31,7 +31,8 @@ un client réel et aucune donnée de ce dépôt ne concerne une entreprise exist
   déclarées à l'unité, avec leur date, leur libellé, leur montant et leur justificatif.
 - **Déclarer son véhicule** : la puissance fiscale et le carburant conditionnent le barème kilométrique
   applicable. Sans véhicule déclaré, la saisie des frais kilométriques est bloquée.
-- **Clôturer la fiche du mois** : le visiteur ferme sa fiche et la transmet à la comptabilité.
+- **Clôturer la fiche du mois** : la clôture est automatique, jamais déclenchée à la main. Elle survient
+  à la première saisie du mois suivant, ou lors du script lancé au début de la campagne de validation.
 - **Valider côté comptable** : le comptable consulte les fiches de tous les visiteurs, contrôle les
   montants et les justificatifs, refuse le cas échéant certains frais hors forfait, puis valide la fiche.
 - **Suivre le remboursement** : la fiche parcourt cinq états et quatre transitions, sans retour en
@@ -48,7 +49,8 @@ l'application : l'échange se fait hors outil, comme aujourd'hui par téléphone
 la trace du contrôle, ce qu'une suppression physique ferait perdre.
 
 Le détail des règles de gestion, des états de la fiche et des cas limites est décrit dans
-`docs/cahier-des-charges.md`. *Ce document n'est pas encore rédigé, il arrive à la phase suivante.*
+[`docs/cahier-des-charges.md`](docs/cahier-des-charges.md), qui numérote soixante règles de gestion et
+dix-sept points restant à confirmer auprès du client.
 
 ---
 
@@ -71,9 +73,10 @@ déclaré par le visiteur :
 | 7 CV et plus | 0,65 | 0,72 |
 
 Le contexte historique appliquait un taux unique de 0,62 € par kilomètre, sans distinction de véhicule.
-Les trois montants forfaitaires ci-dessus sont une **hypothèse de travail** reprise du jeu de données
-historique du contexte GSB : le cahier des charges ne les donne pas. Ils seront confirmés auprès du
-client avant tout développement du calcul.
+Les trois montants forfaitaires ci-dessus sont une **hypothèse de travail** : le cahier des charges ne
+donne aucun barème forfaitaire. Les montants du repas et de la nuitée sont relevés sur l'exemple de
+l'annexe 1, daté de décembre 2010. Celui du relais étape n'existe dans aucune source et relève de notre
+estimation. Les trois seront confirmés auprès du client avant tout développement du calcul.
 
 ---
 
@@ -165,7 +168,9 @@ GSB/
 ├── supabase/     Schéma de la base : migrations SQL, politiques RLS, jeu de données de test
 │   └── migrations/
 ├── docs/         Documentation du projet : cahier des charges, modèle de données, livrables
-│   └── assets/   Images et diagrammes utilisés par la documentation
+│   ├── assets/   Images et diagrammes utilisés par la documentation
+│   └── outils/   Conversion du Markdown vers Word et rendu des diagrammes
+├── legacy/       Application GSB de 2013 remise en marche, référence fonctionnelle
 ├── _sources/     Sujet et documents fournis par l'enseignant (lecture seule)
 ├── .gitignore    Règles d'exclusion commentées, communes aux trois briques
 ├── CONTRIBUTING.md  Conventions de travail à deux
@@ -327,13 +332,15 @@ unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY no_proxy
 
 | Document | Emplacement | État |
 | --- | --- | --- |
-| Cahier des charges | `docs/cahier-des-charges.md` | À venir |
+| Cahier des charges | `docs/cahier-des-charges.md` | Rédigé, 17 points à confirmer |
+| Cahier des charges, version Word | `docs/cahier-des-charges.docx` | Généré depuis le Markdown |
 | Modèle de données | `docs/modele-donnees.md` | À venir |
 | Diagramme de Gantt | `docs/gantt.md` | À venir |
 | Notice utilisateur | `docs/notice-utilisateur.md` | À venir |
 | Charte graphique | `docs/charte-graphique.md` | À venir |
 | Maquettage | `docs/maquettage.md` | À venir |
 | Sujet et annexes fournis | `_sources/` | Fourni par l'enseignant |
+| Application de 2013 remise en marche | `legacy/` | Fonctionnelle, `./legacy/mise-en-route.sh` |
 
 ---
 

@@ -11,8 +11,9 @@ création des tables et des politiques RLS. Seul un fichier `.gitkeep` occupe le
 ## À qui s'adresse cette application
 
 Aux **visiteurs médicaux** uniquement, pour la saisie au fil de l'eau, sur le terrain,
-entre deux rendez-vous. C'est un mémo de poche : on note un péage ou un repas au moment
-où la dépense a lieu, sans attendre le retour au poste de travail.
+entre deux rendez-vous. C'est un mémo de poche : on note un repas ou une nuitée au moment
+où la dépense a lieu, sans attendre le retour au poste de travail. Les péages, eux, ne sont
+jamais remboursés : chaque visiteur dispose d'un badge de télépéage.
 
 Ce n'est **pas** un second client complet. Le comptable n'y a pas accès : la validation,
 la mise en paiement et l'édition PDF restent l'affaire de l'application web. Ce choix

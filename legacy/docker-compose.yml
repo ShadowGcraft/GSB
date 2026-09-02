@@ -1,0 +1,35 @@
+services:
+  db:
+    image: mariadb:10.6
+    # Mode SQL non strict, comme MySQL 5.x en 2013. Le code d'origine insere une
+    # chaine vide dans la colonne entiere auto-incrementee de lignefraishorsforfait :
+    # en mode strict, MariaDB refuse la ligne et PDO, configure en mode silencieux,
+    # ne signale rien. Plutot que de corriger la requete, on retablit le
+    # comportement du serveur de l'epoque.
+    #
+    # lower-case-table-names : le code de 2013 ecrit tantot « etat », tantot
+    # « Etat » et « ficheFrais ». Sous Windows, ou l'application a ete developpee,
+    # MySQL ignore la casse des noms de tables ; sous Linux il la respecte et la
+    # jointure sur « Etat » echoue. On retablit le comportement d'origine.
+    command: --sql-mode="" --lower-case-table-names=1
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: bd_gsb
+    volumes:
+      # tout fichier .sql de ce dossier est joue au premier demarrage, dans l'ordre
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - ./app:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy

@@ -1,0 +1,1 @@
+{ "theme": "neutral", "themeVariables": { "fontFamily": "Helvetica, Arial, sans-serif", "fontSize": "16px", "primaryColor": "#eef2f8", "primaryTextColor": "#1f3b63", "primaryBorderColor": "#1f3b63", "lineColor": "#4a5568" }, "state": { "nodeSpacing": 30, "rankSpacing": 30, "padding": 8 } }
