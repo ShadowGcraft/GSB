@@ -1,0 +1,312 @@
+# ============================================================================
+# .gitignore du monorepo GSB (web Symfony, mobile Flutter, supabase, docs)
+#
+# Organisation : une section par domaine (système, éditeurs, secrets, PHP,
+# Flutter, Supabase, divers).
+#
+# Règle générale : on versionne ce qui DÉCRIT le projet (code, migrations,
+# configuration partagée, documentation) et on ignore ce qui est REGÉNÉRABLE
+# (dépendances, caches, builds, code généré) ou SECRET (mots de passe, clés,
+# jetons).
+#
+# Les chemins commençant par une barre oblique sont ancrés à la racine du
+# dépôt : /web/vendor/ ne vise que le dossier vendor de l'application web.
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# 1. Système d'exploitation
+# Fichiers créés automatiquement par les explorateurs de fichiers. Ils n'ont
+# aucun intérêt pour le projet et polluent les diffs entre postes.
+# ----------------------------------------------------------------------------
+
+# macOS
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+Icon?
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+
+# ----------------------------------------------------------------------------
+# 2. Éditeurs et IDE
+# La configuration personnelle d'un poste ne se partage pas. Exception pour
+# quelques fichiers .vscode qui décrivent l'outillage commun de l'équipe
+# (extensions recommandées, tâches, configuration de débogage).
+# ----------------------------------------------------------------------------
+
+# PhpStorm / IntelliJ / Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Visual Studio Code : on ignore tout sauf les fichiers utiles à l'équipe
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.code-workspace
+
+# Sauvegardes et fichiers temporaires d'éditeurs (Vim, Emacs, Sublime...)
+*.swp
+*.swo
+*.swn
+*.bak
+*.orig
+*.rej
+\#*\#
+.\#*
+*.sublime-project
+*.sublime-workspace
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+build/nb-configuration.xml
+
+
+# ----------------------------------------------------------------------------
+# 3. Secrets et environnement
+#
+# PIÈGE CLASSIQUE SYMFONY, à connaître pour la soutenance : dans Symfony, le
+# fichier /web/.env EST VERSIONNÉ. Ce n'est pas un fichier de secrets, il
+# contient les valeurs par DÉFAUT de l'application, celles qui décrivent le
+# projet et permettent à un nouveau développeur de démarrer. Il en va de même
+# pour .env.dev et .env.prod, qui portent la configuration d'un environnement
+# et non des identifiants.
+#
+# Ce sont les fichiers de SURCHARGE LOCALE qui ne doivent jamais partir sur
+# GitHub : .env.local, .env.*.local et .env.local.php, le cache compilé des
+# variables d'environnement. C'est là que vivent l'URL de la base Supabase, le
+# mot de passe PostgreSQL et les clés d'API.
+#
+# Contrepartie assumée : chaque développeur recrée son .env.local à la main.
+# ----------------------------------------------------------------------------
+
+# Surcharges locales Symfony (JAMAIS versionnées)
+.env.local
+.env.*.local
+.env.local.php
+/web/.env.local
+/web/.env.*.local
+/web/.env.local.php
+.envrc
+
+# Fichier d'environnement de l'application Flutter
+# (contient l'URL du projet Supabase et la clé anon)
+/mobile/.env
+/mobile/lib/env.dart
+/mobile/lib/config/secrets.dart
+
+# Clés, certificats et jetons
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+id_rsa
+id_rsa.pub
+secrets.json
+/web/config/secrets/prod/prod.decrypt.private.php
+
+
+# ----------------------------------------------------------------------------
+# 4. PHP et Symfony (dossier /web)
+# Tout ce qui est réinstallable ou régénérable par une commande.
+#
+# NOTE : composer.json ET composer.lock SONT VERSIONNÉS. Le fichier .lock fige
+# les versions exactes des dépendances, ce qui garantit que Louis et Romain
+# installent strictement le même code avec « composer install ». C'est le
+# dossier vendor/, simple résultat de cette installation, qui est ignoré.
+#
+# NOTE : les fichiers de configuration de l'outillage qualité (phpunit.xml.dist,
+# phpstan.neon, .php-cs-fixer.dist.php) SONT VERSIONNÉS eux aussi. Ils décrivent
+# les règles d'analyse partagées par les deux postes. Seules les surcharges
+# locales et les caches sont ignorés.
+# ----------------------------------------------------------------------------
+
+# Dépendances installées par Composer
+/web/vendor/
+
+# Cache, journaux et sessions générés par Symfony
+# (couvre var/cache, var/log et var/sessions)
+/web/var/
+
+# Assets publiés ou compilés (régénérés par assets:install, AssetMapper, Webpack)
+/web/public/bundles/
+/web/public/build/
+/web/public/assets/
+/web/node_modules/
+
+# Tests et qualité de code : surcharges locales et caches uniquement
+/web/.phpunit.result.cache
+/web/.phpunit.cache/
+/web/phpunit.xml
+/web/coverage/
+/web/clover.xml
+/web/.php-cs-fixer.cache
+/web/.php-cs-fixer.php
+/web/.phpstan.cache/
+
+# Binaires des outils qualité installés localement
+/web/bin/phpstan
+/web/bin/php-cs-fixer
+/web/bin/.phpunit/
+
+
+# ----------------------------------------------------------------------------
+# 5. Flutter et Dart (dossier /mobile)
+# Builds, caches et code généré : tout se reconstruit avec « flutter pub get »
+# puis « dart run build_runner build ».
+#
+# NOTE : pubspec.yaml, pubspec.lock et ios/Podfile.lock SONT VERSIONNÉS. Pour
+# une APPLICATION on versionne les fichiers .lock afin que les deux postes
+# compilent avec exactement les mêmes versions de paquets ; c'est pour une
+# BIBLIOTHÈQUE que la règle officielle Dart recommande d'ignorer pubspec.lock.
+#
+# NOTE : .metadata est versionné également. Il enregistre la version de Flutter
+# ayant créé le projet, ce qui décrit le projet.
+# ----------------------------------------------------------------------------
+
+# Build et outillage Dart
+/mobile/build/
+/mobile/.dart_tool/
+/mobile/.flutter-plugins
+/mobile/.flutter-plugins-dependencies
+/mobile/.packages
+/mobile/.pub-cache/
+/mobile/.pub/
+/mobile/doc/api/
+
+# Code généré par build_runner (json_serializable, freezed...)
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+*.config.dart
+
+# Android : fichiers générés et signature de l'application
+/mobile/android/.gradle/
+/mobile/android/build/
+/mobile/android/app/build/
+/mobile/android/local.properties
+/mobile/android/.idea/
+/mobile/android/captures/
+/mobile/android/key.properties
+/mobile/android/app/*.jks
+/mobile/android/app/*.keystore
+
+# iOS : dépendances CocoaPods et fichiers générés par Xcode
+/mobile/ios/Pods/
+/mobile/ios/.symlinks/
+/mobile/ios/Flutter/Flutter.framework/
+/mobile/ios/Flutter/Flutter.podspec
+/mobile/ios/Flutter/App.framework/
+/mobile/ios/Flutter/flutter_export_environment.sh
+/mobile/ios/Flutter/Generated.xcconfig
+/mobile/ios/Runner/GeneratedPluginRegistrant.*
+/mobile/ios/Runner.xcworkspace/xcuserdata/
+/mobile/ios/Runner.xcodeproj/xcuserdata/
+*.ipa
+
+# Plateformes de bureau et web : non utilisées dans le projet
+/mobile/linux/flutter/ephemeral/
+/mobile/macos/Flutter/ephemeral/
+/mobile/macos/Pods/
+/mobile/windows/flutter/ephemeral/
+
+
+# ----------------------------------------------------------------------------
+# 6. Supabase (dossier /supabase)
+# Seuls les fichiers d'état local de la CLI sont ignorés.
+#
+# NOTE IMPORTANTE : /supabase/migrations/ et /supabase/seed.sql SONT VERSIONNÉS,
+# politiques RLS comprises. Ce sont EUX le livrable : ils décrivent la base
+# partagée par Symfony et Flutter, et permettent de la recréer à l'identique.
+# ----------------------------------------------------------------------------
+
+/supabase/.branches/
+/supabase/.temp/
+/supabase/.env
+/supabase/.env.local
+/supabase/functions/**/.env
+
+
+# ----------------------------------------------------------------------------
+# 7. Divers
+# Archives de travail, journaux et captures d'écran intermédiaires. Les images
+# retenues pour la documentation vont dans /docs/assets et sont versionnées.
+#
+# ATTENTION : les règles génériques de cette section (*.zip, *.log, Capture*.png)
+# frapperaient le dossier de sujet /_sources, qui contient une archive et des
+# images. L'exception !/_sources/** placée en fin de section l'en protège.
+# Ne pas la supprimer.
+# ----------------------------------------------------------------------------
+
+# Archives temporaires
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Journaux
+*.log
+logs/
+npm-debug.log*
+yarn-error.log*
+
+# Captures d'écran de travail (hors documentation)
+/captures/
+/screenshots/
+Capture*.png
+Screenshot*.png
+*.tmp
+.cache/
+
+# Exception : le dossier de sujet échappe à toutes les règles ci-dessus
+!/_sources/**
+
+
+# ----------------------------------------------------------------------------
+# Rappel volontaire : le dossier /_sources N'EST PAS IGNORÉ.
+#
+# Il contient les sources pédagogiques fournies par l'enseignant : cahier des
+# charges, annexes, support Symfony 2 de 2013, photo du tableau de cadrage.
+# Il est CONSERVÉ À DESSEIN dans le dépôt, pour garder la trace de la commande
+# d'origine et pouvoir justifier nos choix à l'oral. Ne pas l'ajouter ici plus
+# tard, et ne pas retirer l'exception !/_sources/** de la section 7.
+# ----------------------------------------------------------------------------
