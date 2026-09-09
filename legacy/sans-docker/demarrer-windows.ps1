@@ -217,6 +217,47 @@ try {
 
     Titre '3/6  Base de données'
 
+    <#
+        Appelle le client MariaDB en lui donnant tout ce dont il a besoin : le
+        dossier de ses greffons, une methode d'authentification simple, et
+        surtout un DELAI D'ATTENTE. Sans lui, le client peut rester bloque
+        indefiniment quand le serveur ne repond pas, et le script parait fige.
+    #>
+    function Invoke-Mysql {
+        param(
+            [string]$Requete,
+            [string]$MotDePasse = 'root',
+            [string]$Base = '',
+            [switch]$Silencieux
+        )
+        $parametres = @(
+            "--host=127.0.0.1", "--port=$PortBase", "--user=root",
+            "--plugin-dir=$mdbPlugins", "--default-auth=mysql_native_password",
+            "--protocol=tcp", "--skip-ssl", "--connect-timeout=5", "-N", "-B"
+        )
+        if ($MotDePasse) { $parametres += "--password=$MotDePasse" }
+        if ($Base)       { $parametres += $Base }
+        $parametres += @("-e", $Requete)
+
+        $ancien = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $sortie = & (Join-Path $mdbBin 'mysql.exe') @parametres 2>&1
+            $script:MysqlCode = $LASTEXITCODE
+            $texte   = ($sortie | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n"
+            $erreurs = ($sortie | Where-Object { $_ -is  [System.Management.Automation.ErrorRecord] }) -join ' '
+            $extrait = $Requete -replace "\s+", ' '
+            if ($extrait.Length -gt 60) { $extrait = $extrait.Substring(0, 60) + '...' }
+            Tracer "   mysql[$($script:MysqlCode)] $extrait"
+            if ($erreurs) { Tracer "   mysql erreur : $erreurs" }
+            if (-not $Silencieux -and $script:MysqlCode -ne 0 -and $erreurs) { Info "  (client : $erreurs)" }
+            return $texte.Trim()
+        } finally { $ErrorActionPreference = $ancien }
+    }
+
+    # Aucun serveur du projet detecte tant que la recherche n a pas eu lieu.
+    $reutilisable = $false
+
     $donnees = Join-Path $local 'mysql\data'
     $mycnf   = Join-Path $local 'mysql\my.ini'
     New-Item -ItemType Directory -Force -Path (Join-Path $local 'mysql') | Out-Null
@@ -265,37 +306,70 @@ try {
     <#
         Une instance du projet tourne-t-elle deja ?
 
-        Les fichiers de donnees d'InnoDB ne supportent qu'un seul serveur a la
-        fois. Lancer une seconde instance sur un autre port echoue avec
+        Les fichiers de donnees d'InnoDB n'admettent qu'un seul serveur a la
+        fois. En demarrer un second, meme sur un autre port, echoue avec
         « The data file './ibdata1' must be writable », message qui ne dit rien
-        du vrai probleme. On cherche donc d'abord un mysqld issu de ce projet,
-        et on le reutilise au lieu d'en demarrer un autre.
+        du vrai probleme.
+
+        Le port reel est lu sur le PROCESSUS, jamais dans le fichier de
+        configuration : celui-ci a pu etre reecrit depuis, et indiquer un port
+        que le serveur vivant n'ecoute pas.
     #>
-    $dejaLa = Get-Process -Name 'mysqld' -ErrorAction SilentlyContinue | Where-Object {
-        try { $_.Path -and $_.Path.StartsWith($binaires, 'OrdinalIgnoreCase') } catch { $false }
+    function Get-ServeurDuProjet {
+        $processus = @(Get-Process -Name 'mysqld' -ErrorAction SilentlyContinue | Where-Object {
+            try { $_.Path -and $_.Path.StartsWith($binaires, 'OrdinalIgnoreCase') } catch { $false }
+        })
+        if (-not $processus) { return $null }
+
+        $p = $processus[0]
+        $port = 0
+        $ecoute = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+                  Where-Object { $_.OwningProcess -eq $p.Id } | Select-Object -First 1
+        if ($ecoute) { $port = $ecoute.LocalPort }
+
+        return [pscustomobject]@{ Processus = $p; Port = $port }
     }
 
-    if ($dejaLa) {
-        # Le port de cette instance est celui qu'indique le fichier deja ecrit.
-        $portExistant = 0
-        if (Test-Path $mycnf) {
-            $ligne = Select-String -Path $mycnf -Pattern '^\s*port\s*=\s*(\d+)' -ErrorAction SilentlyContinue |
-                     Select-Object -First 1
-            if ($ligne) { $portExistant = [int]$ligne.Matches[0].Groups[1].Value }
+    $serveur = Get-ServeurDuProjet
+
+    if ($serveur) {
+        Tracer "instance du projet : pid $($serveur.Processus.Id), port $($serveur.Port)"
+
+        $reutilisable = $false
+        if ($serveur.Port -gt 0) {
+            $PortBase = $serveur.Port
+            $v = Invoke-Mysql -Requete "SELECT VERSION();" -Silencieux
+            if ($script:MysqlCode -ne 0) { $v = Invoke-Mysql -Requete "SELECT VERSION();" -MotDePasse '' -Silencieux }
+            $reutilisable = ($script:MysqlCode -eq 0 -and $v)
         }
-        if ($portExistant -gt 0) {
-            Info "un serveur du projet tourne deja sur le port $portExistant, il est reutilise"
-            Tracer "instance existante : pid $($dejaLa[0].Id), port $portExistant"
-            $PortBase = $portExistant
+
+        if ($reutilisable) {
+            Info "un serveur du projet ecoute deja le port $PortBase, il est reutilise"
         } else {
-            Souci "Un serveur du projet tourne, mais son port est introuvable."
-            Souci "Arretez-le avec .\sans-docker\arreter-windows.ps1 puis relancez."
-            Echouer "Impossible de determiner le port du serveur en cours."
+            # Notre propre serveur, mais injoignable : port inconnu, ou demarre
+            # avec une configuration qui ne correspond plus. On l'arrete pour
+            # repartir proprement. Seuls les processus de ce dossier sont vises.
+            Souci "Un serveur du projet tourne (pid $($serveur.Processus.Id)) mais ne repond pas."
+            Info  'arret de cette instance pour repartir proprement'
+            try {
+                Stop-Process -Id $serveur.Processus.Id -Force -ErrorAction Stop
+                Start-Sleep -Seconds 3
+            } catch {
+                Echouer "Impossible d'arreter le serveur (pid $($serveur.Processus.Id)) : $($_.Exception.Message)
+           Arretez-le a la main, puis relancez :
+             .\sans-docker\arreter-windows.ps1"
+            }
+            $serveur = Get-ServeurDuProjet
+            if ($serveur) {
+                Echouer "Le serveur du projet est toujours en memoire (pid $($serveur.Processus.Id)).
+           Arretez-le depuis le Gestionnaire des taches, puis relancez."
+            }
+            Info 'instance precedente arretee'
         }
     }
 
     $portDemande = $PortBase
-    if (-not $dejaLa) {
+    if (-not $reutilisable) {
         $PortBase = Trouver-Port $PortBase @(3307, 3309, 3310, 3316, 13306, 23306, 33306)
     }
     if ($PortBase -eq 0) {
@@ -317,7 +391,7 @@ try {
     # deja : sans cela, un port choisi au premier demarrage resterait fige dans
     # le fichier, et le serveur ecouterait l'ancien pendant que le client
     # interroge le nouveau.
-    if (-not $dejaLa) {
+    if (-not $reutilisable) {
     @"
 # Instance MariaDB dediee a l'application GSB de 2013, isolee du poste.
 # Fichier regenere a chaque lancement par sans-docker\demarrer-windows.ps1.
@@ -358,43 +432,6 @@ skip-name-resolve
         Detail 'donnees deja initialisees'
     }
 
-    <#
-        Appelle le client MariaDB en lui donnant tout ce dont il a besoin : le
-        dossier de ses greffons, une methode d'authentification simple, et
-        surtout un DELAI D'ATTENTE. Sans lui, le client peut rester bloque
-        indefiniment quand le serveur ne repond pas, et le script parait fige.
-    #>
-    function Invoke-Mysql {
-        param(
-            [string]$Requete,
-            [string]$MotDePasse = 'root',
-            [string]$Base = '',
-            [switch]$Silencieux
-        )
-        $parametres = @(
-            "--host=127.0.0.1", "--port=$PortBase", "--user=root",
-            "--plugin-dir=$mdbPlugins", "--default-auth=mysql_native_password",
-            "--protocol=tcp", "--skip-ssl", "--connect-timeout=5", "-N", "-B"
-        )
-        if ($MotDePasse) { $parametres += "--password=$MotDePasse" }
-        if ($Base)       { $parametres += $Base }
-        $parametres += @("-e", $Requete)
-
-        $ancien = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        try {
-            $sortie = & (Join-Path $mdbBin 'mysql.exe') @parametres 2>&1
-            $script:MysqlCode = $LASTEXITCODE
-            $texte   = ($sortie | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n"
-            $erreurs = ($sortie | Where-Object { $_ -is  [System.Management.Automation.ErrorRecord] }) -join ' '
-            $extrait = $Requete -replace "\s+", ' '
-            if ($extrait.Length -gt 60) { $extrait = $extrait.Substring(0, 60) + '...' }
-            Tracer "   mysql[$($script:MysqlCode)] $extrait"
-            if ($erreurs) { Tracer "   mysql erreur : $erreurs" }
-            if (-not $Silencieux -and $script:MysqlCode -ne 0 -and $erreurs) { Info "  (client : $erreurs)" }
-            return $texte.Trim()
-        } finally { $ErrorActionPreference = $ancien }
-    }
 
     # Le serveur repond-il deja, et est-ce bien le notre ?
     Detail 'test de connexion au serveur'

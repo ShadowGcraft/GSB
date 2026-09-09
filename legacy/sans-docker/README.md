@@ -112,9 +112,15 @@ serveur de base restait en mémoire. Le lancement suivant trouvait son port occu
 autre, et démarrait une seconde instance sur les mêmes fichiers. InnoDB refusait, avec un message qui
 ne dit rien du vrai problème : `The data file './ibdata1' must be writable`.
 
-Le script cherche maintenant, avant tout, un serveur issu de ce projet. S'il en trouve un, il lit son
-port dans le fichier de configuration et le réutilise au lieu d'en lancer un second. Si le démarrage
-échoue malgré tout sur ce message, il liste les serveurs en mémoire et indique comment les arrêter.
+Le script cherche maintenant, avant tout, un serveur issu de ce projet, et **lit son port sur le
+processus lui-même** plutôt que dans le fichier de configuration. La nuance est décisive : ce fichier
+a pu être réécrit entre-temps et annoncer un port que le serveur vivant n'écoute pas. Si le serveur
+répond, il est réutilisé tel quel. S'il ne répond pas, le script l'arrête et repart proprement, sans
+jamais toucher aux autres serveurs du poste.
+
+Ce détail compte sur un poste d'étudiant, où cohabitent souvent plusieurs bases : le journal du test
+montrait quatre serveurs en mémoire, deux de MySQL 8, un de XAMPP, et le nôtre. Seul celui installé
+dans `legacy\local\bin\` est concerné.
 
 Le script d'arrêt a été repris dans la foulée : il retrouvait les processus par leur port, qui varie
 d'un lancement à l'autre. Il les identifie désormais par leur emplacement, dans `legacy\local\bin\`,
