@@ -6,6 +6,11 @@ rem
 rem  Telecharge PHP 7.4 et MariaDB en version portable dans legacy\local\,
 rem  puis demarre l'application. Aucun droit administrateur necessaire.
 rem ---------------------------------------------------------------------------
+
+set HTTP_PROXY=http://172.16.63.130:3128
+set HTTPS_PROXY=http://172.16.63.130:3128
+
+
 chcp 65001 > nul
 setlocal
 cd /d "%~dp0"
