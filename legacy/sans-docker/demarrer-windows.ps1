@@ -625,46 +625,95 @@ FLUSH PRIVILEGES;
         }
     }
 
-    # La presence du dossier vendor ne prouve rien : un lancement interrompu a pu
-    # le creer a vide. Seul autoload.php atteste d'une installation aboutie.
-    if (-not (Test-Path 'app\vendor\autoload.php')) {
-        if (Test-Path 'app\vendor') {
-            Detail 'dossier vendor present mais incomplet, il est efface'
-            Remove-Item 'app\vendor' -Recurse -Force -ErrorAction SilentlyContinue
-        }
-        Info 'installation des dependances, comptez plusieurs minutes'
+    <#
+        Les dependances sont-elles reellement installees ?
 
-        # Ou Composer peut-il travailler ? De preference dans le projet, sinon
-        # dans un dossier local, hors de Documents et donc de OneDrive.
-        $atelier = Join-Path $racine 'app'
-        if (-not (Test-EcritureZip (Join-Path $atelier 'vendor\composer'))) {
-            Souci "Ce dossier refuse l'ecriture d'archives : antivirus, ou"
-            Souci "synchronisation OneDrive du dossier Documents."
-            $atelier = Join-Path $env:LOCALAPPDATA 'gsb-atelier'
-            Info "repli sur un dossier local : $atelier"
-            if (-not (Test-EcritureZip (Join-Path $atelier 'vendor\composer'))) {
-                Echouer "Meme ce dossier local refuse l'ecriture d'archives.
-           Un antivirus bloque tres probablement les fichiers .zip.
-           Ajoutez une exception pour ce dossier, ou suspendez la protection
-           en temps reel le temps de l'installation."
-            }
-            New-Item -ItemType Directory -Force -Path $atelier | Out-Null
-            Copy-Item 'app\composer.json', 'app\composer.lock' -Destination $atelier -Force
+        Ni la presence du dossier vendor, ni celle du seul autoload.php ne le
+        prouvent : une installation interrompue laisse l'un et l'autre derriere
+        elle, sans le moindre paquet. On verifie donc que les bibliotheques
+        indispensables sont bien la.
+    #>
+    function Test-DependancesCompletes {
+        $temoins = @(
+            'app\vendor\autoload.php',
+            'app\vendor\composer\installed.json',
+            'app\vendor\symfony\symfony',
+            'app\vendor\doctrine\annotations',
+            'app\vendor\twig\twig'
+        )
+        $absents = @($temoins | Where-Object { -not (Test-Path $_) })
+        if ($absents) {
+            Tracer "   dependances incompletes, manquent : $($absents -join ', ')"
+            return $false
         }
+        return $true
+    }
 
-        Push-Location $atelier
+    <#
+        Installe les dependances dans un dossier donne.
+
+        Composer y a besoin de composer.json et composer.lock, rien d'autre :
+        les scripts et l'autoloader sont volontairement laisses de cote, ce
+        dernier etant regenere plus loin, une fois vendor a sa place definitive.
+    #>
+    function Install-Dependances([string]$Atelier) {
+        New-Item -ItemType Directory -Force -Path $Atelier | Out-Null
+        if ($Atelier -ne (Join-Path $racine 'app')) {
+            Copy-Item 'app\composer.json', 'app\composer.lock' -Destination $Atelier -Force
+        }
+        Push-Location $Atelier
         try {
-            Detail "composer install dans $atelier"
-            # --no-autoloader : il sera regenere plus loin, une fois le dossier
-            # vendor a sa place definitive dans le projet.
+            Detail "composer install dans $Atelier"
             Invoke-Php @('-c', $php_ini, $composer, 'install',
                          '--no-interaction', '--no-scripts', '--no-autoloader', '--no-progress') |
                 ForEach-Object { Detail $_ }
         } finally { Pop-Location }
 
-        if (-not (Test-Path (Join-Path $atelier 'vendor\composer\installed.json'))) {
-            Echouer "L'installation des dependances a echoue.
-           Detail complet dans $script:Journal"
+        # Les temoins d'une installation aboutie, dans le dossier de travail.
+        foreach ($t in @('vendor\composer\installed.json', 'vendor\symfony\symfony',
+                         'vendor\doctrine\annotations', 'vendor\twig\twig')) {
+            if (-not (Test-Path (Join-Path $Atelier $t))) {
+                Tracer "   installation incomplete dans $Atelier : $t absent"
+                return $false
+            }
+        }
+        return $true
+    }
+
+    if (-not (Test-DependancesCompletes)) {
+        if (Test-Path 'app\vendor') {
+            Info 'dossier vendor incomplet, il est efface avant reinstallation'
+            Remove-Item 'app\vendor' -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        Info 'installation des dependances, comptez plusieurs minutes'
+
+        # Premiere tentative dans le projet lui-meme.
+        $atelier = Join-Path $racine 'app'
+        $ok = Install-Dependances $atelier
+
+        if (-not $ok) {
+            # Echec typique quand OneDrive synchronise Documents, ou qu'un
+            # antivirus refuse l'ecriture des archives temporaires. On repart
+            # d'un dossier local, hors de Documents.
+            Souci "L'installation a echoue dans le projet."
+            Souci "Cause frequente : synchronisation OneDrive du dossier Documents,"
+            Souci "ou antivirus qui bloque l'ecriture des fichiers .zip."
+            if (Test-Path 'app\vendor') { Remove-Item 'app\vendor' -Recurse -Force -ErrorAction SilentlyContinue }
+
+            $atelier = Join-Path $env:LOCALAPPDATA 'gsb-atelier'
+            if (Test-Path $atelier) { Remove-Item $atelier -Recurse -Force -ErrorAction SilentlyContinue }
+            Info "seconde tentative depuis un dossier local : $atelier"
+            $ok = Install-Dependances $atelier
+
+            if (-not $ok) {
+                Write-Host ''
+                Souci "La seconde tentative a echoue aussi."
+                Souci "Verifiez, dans cet ordre :"
+                Souci "  1. le reseau, et le proxy si vous etes en salle ;"
+                Souci "  2. l'antivirus, qui bloque peut-etre les fichiers .zip ;"
+                Souci "  3. l'espace disque disponible."
+                Echouer "Installation des dependances impossible. Detail : $script:Journal"
+            }
         }
 
         # Rapatriement si Composer a du travailler ailleurs.
@@ -674,6 +723,11 @@ FLUSH PRIVILEGES;
             if (Test-Path $cible) { Remove-Item $cible -Recurse -Force }
             Move-Item (Join-Path $atelier 'vendor') $cible
             Remove-Item $atelier -Recurse -Force -ErrorAction SilentlyContinue
+        }
+
+        if (-not (Test-DependancesCompletes)) {
+            Echouer "Les dependances restent incompletes apres installation.
+           Detail des paquets manquants dans $script:Journal"
         }
         Info 'dependances installees'
     } else {
@@ -727,9 +781,8 @@ parameters:
             Detail "reponse obtenue : '$essai'"
             if (-not (Test-Path 'vendor\autoload.php')) { Souci 'vendor\autoload.php est absent.' }
             if (-not (Test-Path 'vendor\doctrine\annotations')) { Souci 'vendor\doctrine\annotations est absent.' }
-            Souci 'Le dossier vendor est incomplet. Supprimez-le et relancez :'
-            Souci "  Remove-Item -Recurse -Force '$racine\app\vendor'"
-            Echouer "Dependances incompletes."
+            Souci 'Le dossier vendor sera efface au prochain lancement, qui le refera.'
+            Echouer "Dependances incompletes. Relancez simplement ce script."
         }
         Detail 'autoloader verifie, les classes de Doctrine se chargent'
 

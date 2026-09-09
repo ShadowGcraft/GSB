@@ -113,9 +113,15 @@ créait ce dossier avant d'échouer. Le lancement suivant le voyait, croyait le 
 lançait l'application sans aucune dépendance. Le terminal n'affichait rien, et la page web
 répondait `Class 'Doctrine\Common\Annotations\AnnotationRegistry' not found`.
 
-Deux corrections. Le test d'écriture efface maintenant les dossiers qu'il a créés. Et l'installation
-se juge sur la présence de `vendor\autoload.php`, seul témoin d'une installation aboutie ; un dossier
-`vendor` incomplet est effacé et refait.
+Trois corrections. Le test d'écriture efface les dossiers qu'il a créés. L'installation se juge sur
+la présence effective des bibliothèques, `symfony/symfony`, `doctrine/annotations` et `twig/twig`, et
+non sur celle d'un dossier : Composer génère `autoload.php` même quand il n'a installé aucun paquet,
+si bien que ce fichier seul ne prouve rien. Un dossier `vendor` incomplet est effacé et refait.
+
+Enfin, l'installation ne se fie plus à un test d'écriture préalable, qui pouvait réussir là où
+Composer échouerait. Elle tente d'abord dans le projet ; si les paquets n'y sont pas au bout du
+compte, elle recommence depuis un dossier local hors de `Documents`, puis rapatrie le résultat. Ce
+n'est qu'après cette seconde tentative que le script renonce, en énumérant les causes à vérifier.
 
 Le script vérifie en outre que l'autoloader charge réellement une classe du vendor, en la demandant
 à PHP. L'erreur se voyait auparavant dans le navigateur, jamais dans le terminal.
