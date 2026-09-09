@@ -103,9 +103,24 @@ Supprimez `legacy/local/` : binaires, base et journaux disparaissent. Le prochai
 reconstruit tout. Pour ne réinitialiser que les données, supprimez `legacy/local/mysql/data`, ou
 utilisez `-BaseNeuve` sous Windows.
 
-## Quatre particularités de Windows
+## Cinq particularités de Windows
 
-Ces quatre points ont été découverts en essayant sur un vrai poste, et corrigés.
+Ces cinq points ont été découverts en essayant sur un vrai poste, et corrigés.
+
+**Windows réserve des plages entières de ports.** C'est la plus déroutante. MariaDB refusait de
+démarrer avec l'erreur 10013 et le message « Do you already have another server running on port
+3307 ? », alors que rien n'écoutait ce port. Hyper-V et WSL, installés avec Docker, réservent des
+blocs de ports souvent situés autour de 3300 : rien ne les occupe, mais Windows interdit de s'y
+mettre à l'écoute.
+
+Le script essaie désormais réellement d'écouter le port avant de lancer quoi que ce soit, ce qui est
+le seul test fiable. S'il est refusé, il en essaie d'autres et annonce celui qu'il retient. En
+dernier recours, il affiche les plages réservées du poste et indique quoi faire. Le port du serveur
+web est protégé de la même façon.
+
+Au passage, le fichier de configuration de MariaDB n'était écrit qu'au premier lancement : demander
+un autre port avec `-PortBase` changeait les appels du client, mais le serveur continuait d'écouter
+l'ancien. Il est maintenant réécrit à chaque démarrage.
 
 **PHP 7.4 pour Windows ne fournit pas l'extension `zip`.** Ce n'est pas une omission de notre part :
 l'archive officielle `php-7.4.33-Win32-vc15-x64.zip` ne contient aucun `php_zip.dll`, sur les
@@ -138,7 +153,7 @@ chargement du schéma, connexion, saisie forfaitisée, ajout d'un frais hors for
 d'une fiche clôturée, feuilles de style et logo. La bascule entre les deux modes a été testée dans
 les deux sens.
 
-Le mode Windows a été **essayé sur un vrai poste**, en deux passes, ce qui a révélé les quatre
+Le mode Windows a été **essayé sur un vrai poste**, en trois passes, ce qui a révélé les cinq
 problèmes décrits plus haut. Le téléchargement des outils, la configuration de PHP et le démarrage
 de MariaDB sont désormais confirmés sur Windows. Chaque correctif a été vérifié à part : contenu
 réel des archives PHP et MariaDB, fonctionnement de Composer avec un extracteur externe, lecture

@@ -222,9 +222,65 @@ try {
         Remove-Item -Recurse -Force $donnees
     }
 
-    if (-not (Test-Path $mycnf)) {
-        @"
+    <#
+        Le port est-il reellement utilisable ?
+
+        Windows reserve des plages entieres de ports au profit d'Hyper-V et de
+        WSL, souvent autour de 3300. Un port de ces plages n'est pas « occupe »
+        au sens habituel : rien ne l'ecoute, mais toute tentative d'ecoute est
+        refusee avec l'erreur 10013. Le seul test fiable est d'essayer.
+    #>
+    function Test-PortUtilisable([int]$Port) {
+        $ecouteur = $null
+        try {
+            $ecouteur = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $Port)
+            $ecouteur.Start()
+            return $true
+        } catch {
+            Tracer "   port $Port refuse : $($_.Exception.Message)"
+            return $false
+        } finally {
+            if ($ecouteur) { try { $ecouteur.Stop() } catch { } }
+        }
+    }
+
+    # Cherche un port utilisable, en commencant par celui demande.
+    function Trouver-Port([int]$Souhaite, [int[]]$Secours) {
+        if (Test-PortUtilisable $Souhaite) { return $Souhaite }
+
+        Souci "Le port $Souhaite est inutilisable sur ce poste."
+        foreach ($p in $Secours) {
+            if ($p -ne $Souhaite -and (Test-PortUtilisable $p)) {
+                Info "port de remplacement retenu : $p"
+                return $p
+            }
+        }
+        return 0
+    }
+
+    $portDemande = $PortBase
+    $PortBase = Trouver-Port $PortBase @(3307, 3309, 3310, 3316, 13306, 23306, 33306)
+    if ($PortBase -eq 0) {
+        Write-Host ''
+        Souci "Aucun port de base de donnees disponible."
+        Write-Host '    Plages de ports que Windows reserve, et donc interdites :' -ForegroundColor Yellow
+        try {
+            netsh interface ipv4 show excludedportrange protocol=tcp 2>&1 |
+                ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+        } catch { }
+        Echouer "Relancez en choisissant un port hors de ces plages :
+           .\sans-docker\demarrer-windows.ps1 -PortBase 33306"
+    }
+    if ($PortBase -ne $portDemande) {
+        Tracer "port de base : $portDemande demande, $PortBase retenu"
+    }
+
+    # La configuration est REECRITE a chaque lancement : sans cela, un port
+    # choisi au premier demarrage resterait fige dans le fichier, et le serveur
+    # continuerait d'ecouter l'ancien pendant que le client interroge le nouveau.
+    @"
 # Instance MariaDB dediee a l'application GSB de 2013, isolee du poste.
+# Fichier regenere a chaque lancement par sans-docker\demarrer-windows.ps1.
 [mysqld]
 port                    = $PortBase
 bind-address            = 127.0.0.1
@@ -236,8 +292,7 @@ sql_mode                =
 lower_case_table_names  = 1
 skip-name-resolve
 "@ | Set-Content -Path $mycnf -Encoding ASCII
-        Info 'configuration écrite'
-    }
+    Info "configuration ecrite, port $PortBase"
 
     $journalErreur = Join-Path $local 'log\mariadb-sortie.log'
     $journalInit   = Join-Path $local 'log\init-db.log'
@@ -345,11 +400,25 @@ skip-name-resolve
 
             # Le processus a-t-il rendu l'ame ? Inutile d'attendre la fin du delai.
             if ($processus.HasExited) {
-                Souci "mysqld s'est arrete tout seul, code $($processus.ExitCode)."
+                $code = if ($null -ne $processus.ExitCode) { $processus.ExitCode } else { 'inconnu' }
+                Souci "mysqld s'est arrete tout seul, code $code."
                 Montrer-Journal "$journalErreur.err" 'sortie d''erreur de mysqld'
                 Montrer-Journal $journalErreur        'sortie de mysqld'
                 $err = Get-ChildItem $donnees -Filter '*.err' -ErrorAction SilentlyContinue | Select-Object -First 1
                 if ($err) { Montrer-Journal $err.FullName "journal MariaDB ($($err.Name))" }
+                    if ((Get-Content "$journalErreur.err" -Raw -ErrorAction SilentlyContinue) -match '10013') {
+                    Write-Host ''
+                    Souci "L'erreur 10013 signifie que Windows INTERDIT l'ecoute sur ce port."
+                    Write-Host '    Ce n''est pas qu''un autre serveur l''occupe : Hyper-V et WSL' -ForegroundColor Yellow
+                    Write-Host '    reservent des plages entieres, souvent autour de 3300.' -ForegroundColor Yellow
+                    Write-Host '    Plages reservees sur ce poste :' -ForegroundColor Yellow
+                    try {
+                        netsh interface ipv4 show excludedportrange protocol=tcp 2>&1 |
+                            ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray; Tracer "     | $_" }
+                    } catch { }
+                    Write-Host '    Choisissez un port hors de ces plages :' -ForegroundColor Yellow
+                    Write-Host '      .\sans-docker\demarrer-windows.ps1 -PortBase 33306' -ForegroundColor Yellow
+                }
                 Echouer "Le serveur de base de donnees n'a pas pu demarrer."
             }
 
@@ -486,12 +555,17 @@ parameters:
 
     Titre '6/6  Serveur web'
 
-    $occupe = Get-NetTCPConnection -LocalPort $PortWeb -State Listen -ErrorAction SilentlyContinue
-    if ($occupe) {
-        $proc = (Get-Process -Id $occupe[0].OwningProcess -ErrorAction SilentlyContinue).ProcessName
-        Souci "Le port $PortWeb est occupé par « $proc »."
-        Souci "Relancez avec un autre port :  .\sans-docker\demarrer-windows.ps1 -PortWeb 8091"
-        exit 1
+    # Meme precaution que pour la base : un port peut etre reserve par Windows
+    # sans que rien ne l'ecoute.
+    $portWebDemande = $PortWeb
+    $PortWeb = Trouver-Port $PortWeb @(8089, 8091, 8095, 8100, 18080, 28080)
+    if ($PortWeb -eq 0) {
+        Echouer "Aucun port disponible pour le serveur web.
+           Relancez en en choisissant un :
+             .\sans-docker\demarrer-windows.ps1 -PortWeb 18080"
+    }
+    if ($PortWeb -ne $portWebDemande) {
+        Souci "Le port $portWebDemande etait inutilisable, le serveur web ecoute sur $PortWeb."
     }
 
     $routeur = Join-Path $PSScriptRoot 'routeur.php'
