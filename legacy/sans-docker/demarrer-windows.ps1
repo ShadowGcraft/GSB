@@ -626,16 +626,19 @@ FLUSH PRIVILEGES;
     }
 
     <#
-        Les dependances sont-elles reellement installees ?
+        Les PAQUETS sont-ils installes ?
 
-        Ni la presence du dossier vendor, ni celle du seul autoload.php ne le
-        prouvent : une installation interrompue laisse l'un et l'autre derriere
-        elle, sans le moindre paquet. On verifie donc que les bibliotheques
-        indispensables sont bien la.
+        On ne regarde ici que les bibliotheques elles-memes. Le fichier
+        autoload.php n'en fait volontairement pas partie : l'installation est
+        lancee avec --no-autoloader, et l'autoloader est genere ensuite, une
+        fois vendor a sa place definitive. Le reclamer ici ferait echouer une
+        installation pourtant reussie.
+
+        La presence du dossier vendor ne prouve rien : une installation
+        interrompue le laisse derriere elle, vide.
     #>
-    function Test-DependancesCompletes {
+    function Test-PaquetsInstalles {
         $temoins = @(
-            'app\vendor\autoload.php',
             'app\vendor\composer\installed.json',
             'app\vendor\symfony\symfony',
             'app\vendor\doctrine\annotations',
@@ -643,7 +646,7 @@ FLUSH PRIVILEGES;
         )
         $absents = @($temoins | Where-Object { -not (Test-Path $_) })
         if ($absents) {
-            Tracer "   dependances incompletes, manquent : $($absents -join ', ')"
+            Tracer "   paquets manquants : $($absents -join ', ')"
             return $false
         }
         return $true
@@ -680,7 +683,7 @@ FLUSH PRIVILEGES;
         return $true
     }
 
-    if (-not (Test-DependancesCompletes)) {
+    if (-not (Test-PaquetsInstalles)) {
         if (Test-Path 'app\vendor') {
             Info 'dossier vendor incomplet, il est efface avant reinstallation'
             Remove-Item 'app\vendor' -Recurse -Force -ErrorAction SilentlyContinue
@@ -725,13 +728,13 @@ FLUSH PRIVILEGES;
             Remove-Item $atelier -Recurse -Force -ErrorAction SilentlyContinue
         }
 
-        if (-not (Test-DependancesCompletes)) {
-            Echouer "Les dependances restent incompletes apres installation.
-           Detail des paquets manquants dans $script:Journal"
+        if (-not (Test-PaquetsInstalles)) {
+            Echouer "Des paquets manquent encore apres installation.
+           Detail dans $script:Journal"
         }
         Info 'dependances installees'
     } else {
-        Info 'dependances deja installees'
+        Info 'paquets deja installes'
     }
 
     @"

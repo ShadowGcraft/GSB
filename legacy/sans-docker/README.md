@@ -118,6 +118,10 @@ la présence effective des bibliothèques, `symfony/symfony`, `doctrine/annotati
 non sur celle d'un dossier : Composer génère `autoload.php` même quand il n'a installé aucun paquet,
 si bien que ce fichier seul ne prouve rien. Un dossier `vendor` incomplet est effacé et refait.
 
+Le contrôle porte bien sur les paquets, jamais sur `autoload.php` : l'installation est lancée avec
+`--no-autoloader`, et l'autoloader n'est produit qu'ensuite, une fois `vendor` à sa place définitive.
+Le réclamer trop tôt faisait échouer une installation pourtant réussie.
+
 Enfin, l'installation ne se fie plus à un test d'écriture préalable, qui pouvait réussir là où
 Composer échouerait. Elle tente d'abord dans le projet ; si les paquets n'y sont pas au bout du
 compte, elle recommence depuis un dossier local hors de `Documents`, puis rapatrie le résultat. Ce
