@@ -41,6 +41,19 @@ else
 fi
 
 echo "==> 5/6  Fichiers générés : paramètres, amorçage, assets"
+
+# Le mode sans Docker fait pointer la connexion vers 127.0.0.1 : on la remet
+# sur le service « db » du compose, pour que les deux modes cohabitent.
+python3 - <<'PY'
+import pathlib, re
+p = pathlib.Path('app/src/Pg/GsbFraisBundle/Resources/config/services.yml')
+t = p.read_text()
+n = re.sub(r'db\.host: mysql:host=[^\n]*', 'db.host: mysql:host=db', t)
+if n != t:
+    p.write_text(n)
+    print("    connexion remise sur le service Docker « db »")
+PY
+
 # Composer cree les fichiers en 600 dans le conteneur. Le volume reflete ces
 # permissions sur l'hote et Apache, qui tourne en www-data, ne peut plus rien
 # lire : toutes les pages repondent alors 404.

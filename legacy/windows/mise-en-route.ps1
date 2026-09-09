@@ -148,6 +148,12 @@ composer install --no-interaction --no-scripts
         Info 'dépendances déjà installées'
     }
 
+    # Le mode sans Docker fait pointer la connexion vers 127.0.0.1 : on la remet
+    # sur le service « db » du compose, pour que les deux modes cohabitent.
+    $services = 'app\src\Pg\GsbFraisBundle\Resources\config\services.yml'
+    $contenu  = (Get-Content $services -Raw) -replace 'db\.host: mysql:host=[^\r\n]*', 'db.host: mysql:host=db'
+    Set-Content -Path $services -Value ($contenu -replace "`r`n", "`n") -Encoding UTF8 -NoNewline
+
     Invoke-DansConteneur @'
 cd /var/www/html
 [ -f app/config/parameters.yml ] || cp app/config/parameters.yml.dist app/config/parameters.yml

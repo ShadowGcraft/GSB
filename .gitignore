@@ -259,6 +259,24 @@ secrets.json
 
 /supabase/.branches/
 /supabase/.temp/
+
+
+# ----------------------------------------------------------------------------
+# 6 bis. Application historique lancée sans Docker (dossier /legacy)
+#
+# Le dossier legacy/local/ est entièrement régénérable par les scripts de
+# legacy/sans-docker/ : il contient les binaires PHP et MariaDB téléchargés,
+# les données de la base, les journaux et Composer. Plusieurs centaines de
+# mégaoctets, propres à chaque poste : rien n'a sa place dans le dépôt.
+# ----------------------------------------------------------------------------
+
+/legacy/local/
+/legacy/app/vendor/
+/legacy/app/app/cache/
+/legacy/app/app/logs/
+/legacy/app/app/config/parameters.yml
+/legacy/app/app/bootstrap.php.cache
+/legacy/app/web/bundles/
 /supabase/.env
 /supabase/.env.local
 /supabase/functions/**/.env

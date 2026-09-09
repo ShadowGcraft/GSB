@@ -9,9 +9,17 @@ Rien de ce dossier n'a vocation à finir dans l'application Symfony 7. Le nouvea
 
 ## Démarrer
 
-**Le plus simple** : double-cliquez, à la racine du dépôt, sur `Lancer-GSB-mac.command` sous macOS
-ou sur `Lancer-GSB-windows.bat` sous Windows. Le lanceur démarre Docker, met l'application en route
-et ouvre le navigateur. `Arreter-GSB-...` fait l'inverse.
+Deux modes au choix, qui font tourner exactement la même application.
+
+**Avec Docker**, sur <http://localhost:8088>. Double-cliquez sur `Lancer-GSB-mac.command` ou
+`Lancer-GSB-windows.bat`, à la racine du dépôt.
+
+**Sans Docker**, sur <http://127.0.0.1:8089>. Double-cliquez sur
+`Lancer-GSB-sans-Docker-mac.command` ou `Lancer-GSB-sans-Docker-windows.bat`. Ce mode n'exige
+aucun droit administrateur sous Windows : PHP et MariaDB y sont téléchargés en version portable.
+Voir `sans-docker/README.md`.
+
+Les fichiers `Arreter-GSB-...` font l'inverse.
 
 En ligne de commande :
 
@@ -139,6 +147,11 @@ legacy/
 ├── windows/             Les mêmes opérations en PowerShell, plus l'installation
 │   ├── installer-prerequis.ps1
 │   └── mise-en-route.ps1
+├── sans-docker/         Le même service sans conteneur, macOS et Windows
+│   ├── demarrer-mac.sh      arreter-mac.sh
+│   ├── demarrer-windows.ps1 arreter-windows.ps1
+│   └── routeur.php          tient lieu d'Apache
+├── local/               Binaires, base et journaux du mode sans Docker (ignoré par Git)
 ├── sql/
 │   ├── 01-schema.sql    Schéma reconstitué, commenté requête par requête
 │   └── 02-donnees.sql   Jeu d'essai

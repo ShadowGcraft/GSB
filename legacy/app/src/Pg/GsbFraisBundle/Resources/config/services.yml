@@ -1,5 +1,5 @@
 parameters:
-    db.host: mysql:host=db
+    db.host: mysql:host=127.0.0.1;port=3307
     db.name: dbname=bd_gsb
     db.user: root
     db.mdp: root
