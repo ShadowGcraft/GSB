@@ -1,2 +1,0 @@
-
-Fatal error: Uncaught Error: Class 'Doctrine\Common\Annotations\AnnotationRegistry' not found in C:\Users\admin\Documents\GitHub\GSB\legacy\app\app\autoload.php:9 Stack trace: #0 C:\Users\admin\Documents\GitHub\GSB\legacy\app\web\app_dev.php(20): require() #1 C:\Users\admin\Documents\GitHub\GSB\legacy\sans-docker\routeur.php(45): require('C:\\Users\\admin\\...') #2 {main} thrown in C:\Users\admin\Documents\GitHub\GSB\legacy\app\app\autoload.php on line 9

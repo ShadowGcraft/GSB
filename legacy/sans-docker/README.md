@@ -103,9 +103,22 @@ Supprimez `legacy/local/` : binaires, base et journaux disparaissent. Le prochai
 reconstruit tout. Pour ne réinitialiser que les données, supprimez `legacy/local/mysql/data`, ou
 utilisez `-BaseNeuve` sous Windows.
 
-## Huit particularités de Windows
+## Neuf particularités de Windows
 
-Ces huit points ont été découverts en essayant sur un vrai poste, et corrigés.
+Ces neuf points ont été découverts en essayant sur un vrai poste, et corrigés.
+
+**Un dossier vide passait pour une installation réussie.** Le script décidait d'installer les
+dépendances selon la seule présence du dossier `vendor`. Or son propre test d'écriture d'archive
+créait ce dossier avant d'échouer. Le lancement suivant le voyait, croyait le travail fait, et
+lançait l'application sans aucune dépendance. Le terminal n'affichait rien, et la page web
+répondait `Class 'Doctrine\Common\Annotations\AnnotationRegistry' not found`.
+
+Deux corrections. Le test d'écriture efface maintenant les dossiers qu'il a créés. Et l'installation
+se juge sur la présence de `vendor\autoload.php`, seul témoin d'une installation aboutie ; un dossier
+`vendor` incomplet est effacé et refait.
+
+Le script vérifie en outre que l'autoloader charge réellement une classe du vendor, en la demandant
+à PHP. L'erreur se voyait auparavant dans le navigateur, jamais dans le terminal.
 
 **Deux serveurs ne peuvent pas partager les mêmes données.** Après un lancement interrompu, le
 serveur de base restait en mémoire. Le lancement suivant trouvait son port occupé, en choisissait un
@@ -186,8 +199,9 @@ chargement du schéma, connexion, saisie forfaitisée, ajout d'un frais hors for
 d'une fiche clôturée, feuilles de style et logo. La bascule entre les deux modes a été testée dans
 les deux sens.
 
-Le mode Windows a été **essayé sur un vrai poste**, en cinq passes, ce qui a révélé les huit
-problèmes décrits plus haut. Le téléchargement des outils, la configuration de PHP, le démarrage de
+Le mode Windows a été **essayé sur un vrai poste**, en six passes, ce qui a révélé les neuf
+problèmes décrits plus haut. Toutes les étapes jusqu'au démarrage du serveur web sont désormais
+confirmées sur Windows. Le téléchargement des outils, la configuration de PHP, le démarrage de
 MariaDB, le chargement du schéma et du jeu d'essai sont désormais confirmés sur Windows. Le téléchargement des outils, la configuration de PHP et le démarrage
 de MariaDB sont désormais confirmés sur Windows. Chaque correctif a été vérifié à part : contenu
 réel des archives PHP et MariaDB, fonctionnement de Composer avec un extracteur externe, lecture

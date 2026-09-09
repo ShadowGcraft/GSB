@@ -176,7 +176,13 @@ try {
         $ErrorActionPreference = 'Continue'
         try {
             $sortie = & $php @Arguments 2>&1
-            return (($sortie | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join '').Trim()
+            $script:PhpCode = $LASTEXITCODE
+            $texte   = ($sortie | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n"
+            $erreurs = ($sortie | Where-Object { $_ -is  [System.Management.Automation.ErrorRecord] }) -join ' '
+            Tracer "   php[$($script:PhpCode)] $($Arguments -join ' ')"
+            if ($texte)   { Tracer "     sortie : $($texte -replace "`n", ' | ')" }
+            if ($erreurs) { Tracer "     erreur : $erreurs" }
+            return $texte.Trim()
         } finally {
             $ErrorActionPreference = $ancien
         }
@@ -594,6 +600,14 @@ FLUSH PRIVILEGES;
         Le symptome est un « Permission denied » sur un fichier tmp-....zip.
     #>
     function Test-EcritureZip([string]$Dossier) {
+        # Les dossiers crees pour l'essai sont retires ensuite : en laisser un
+        # ferait croire au lancement suivant que l'installation a eu lieu.
+        $aCreer = @()
+        $courant = $Dossier
+        while ($courant -and -not (Test-Path $courant)) {
+            $aCreer += $courant
+            $courant = Split-Path -Parent $courant
+        }
         try {
             New-Item -ItemType Directory -Force -Path $Dossier | Out-Null
             $essai = Join-Path $Dossier ("essai-" + [guid]::NewGuid().ToString('N') + ".zip")
@@ -604,10 +618,20 @@ FLUSH PRIVILEGES;
         } catch {
             Tracer "   ecriture zip refusee dans $Dossier : $($_.Exception.Message)"
             return $false
+        } finally {
+            foreach ($d in $aCreer) {
+                Remove-Item $d -Recurse -Force -ErrorAction SilentlyContinue
+            }
         }
     }
 
-    if (-not (Test-Path 'app\vendor')) {
+    # La presence du dossier vendor ne prouve rien : un lancement interrompu a pu
+    # le creer a vide. Seul autoload.php atteste d'une installation aboutie.
+    if (-not (Test-Path 'app\vendor\autoload.php')) {
+        if (Test-Path 'app\vendor') {
+            Detail 'dossier vendor present mais incomplet, il est efface'
+            Remove-Item 'app\vendor' -Recurse -Force -ErrorAction SilentlyContinue
+        }
         Info 'installation des dependances, comptez plusieurs minutes'
 
         # Ou Composer peut-il travailler ? De preference dans le projet, sinon
@@ -684,7 +708,31 @@ parameters:
         # leur propre code. Invoke-Php les absorbe : sans cela, PowerShell en
         # ferait des exceptions fatales.
         Detail 'regeneration de l autoloader'
-        Invoke-Php @('-c', $php_ini, $composer, 'dump-autoload', '--quiet') | Out-Null
+        $sortieAuto = Invoke-Php @('-c', $php_ini, $composer, 'dump-autoload')
+        if ($script:PhpCode -ne 0) {
+            Write-Host ''
+            Souci "La generation de l autoloader a echoue :"
+            $sortieAuto -split "`n" | ForEach-Object { Write-Host "      $_" -ForegroundColor DarkGray }
+            Echouer "Sans autoloader, l application ne peut pas demarrer."
+        }
+
+        # Verification reelle : l autoloader charge-t-il une classe du vendor ?
+        # Sans ce controle, l erreur n apparaissait qu a l ouverture de la page,
+        # sous la forme « Class AnnotationRegistry not found ».
+        $essai = Invoke-Php @('-c', $php_ini, '-r',
+            "require 'vendor/autoload.php'; echo class_exists('Doctrine\\Common\\Annotations\\AnnotationRegistry') ? 'oui' : 'non';")
+        if ($essai -ne 'oui') {
+            Write-Host ''
+            Souci "L autoloader ne trouve pas les classes de Doctrine."
+            Detail "reponse obtenue : '$essai'"
+            if (-not (Test-Path 'vendor\autoload.php')) { Souci 'vendor\autoload.php est absent.' }
+            if (-not (Test-Path 'vendor\doctrine\annotations')) { Souci 'vendor\doctrine\annotations est absent.' }
+            Souci 'Le dossier vendor est incomplet. Supprimez-le et relancez :'
+            Souci "  Remove-Item -Recurse -Force '$racine\app\vendor'"
+            Echouer "Dependances incompletes."
+        }
+        Detail 'autoloader verifie, les classes de Doctrine se chargent'
+
         Detail 'generation du fichier d amorcage'
         Invoke-Php @('-c', $php_ini, 'vendor\sensio\distribution-bundle\Sensio\Bundle\DistributionBundle\Resources\bin\build_bootstrap.php', 'app') | Out-Null
         Detail 'publication des ressources'
