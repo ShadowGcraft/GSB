@@ -103,9 +103,23 @@ Supprimez `legacy/local/` : binaires, base et journaux disparaissent. Le prochai
 reconstruit tout. Pour ne réinitialiser que les données, supprimez `legacy/local/mysql/data`, ou
 utilisez `-BaseNeuve` sous Windows.
 
-## Cinq particularités de Windows
+## Sept particularités de Windows
 
-Ces cinq points ont été découverts en essayant sur un vrai poste, et corrigés.
+Ces sept points ont été découverts en essayant sur un vrai poste, et corrigés.
+
+**Composer ne pouvait écrire aucune archive.** Il téléchargeait chaque dépendance dans un fichier
+`.zip` temporaire, et Windows refusait l'écriture, pour les trente-sept paquets. Deux causes se
+combinent souvent : le dossier `Documents` est synchronisé par OneDrive, qui verrouille les fichiers,
+et les antivirus refusent l'écriture d'archives dans un dossier surveillé.
+
+Le script teste maintenant l'écriture d'une archive avant de lancer Composer. Si elle est refusée, il
+bascule sur un dossier local hors de `Documents`, y installe les dépendances, puis les rapatrie dans
+le projet. Si même ce dossier refuse, il le dit et pointe l'antivirus.
+
+**Une extension déclarée de travers.** `opcache` n'est pas une extension ordinaire mais une extension
+Zend : elle se déclare avec `zend_extension`. Écrite comme les autres, elle provoquait un
+avertissement à chaque appel de PHP, et donc l'arrêt du script. Elle est retirée : elle n'apporte
+rien à un serveur de démonstration.
 
 **Windows réserve des plages entières de ports.** C'est la plus déroutante. MariaDB refusait de
 démarrer avec l'erreur 10013 et le message « Do you already have another server running on port
@@ -153,8 +167,9 @@ chargement du schéma, connexion, saisie forfaitisée, ajout d'un frais hors for
 d'une fiche clôturée, feuilles de style et logo. La bascule entre les deux modes a été testée dans
 les deux sens.
 
-Le mode Windows a été **essayé sur un vrai poste**, en trois passes, ce qui a révélé les cinq
-problèmes décrits plus haut. Le téléchargement des outils, la configuration de PHP et le démarrage
+Le mode Windows a été **essayé sur un vrai poste**, en quatre passes, ce qui a révélé les sept
+problèmes décrits plus haut. Le téléchargement des outils, la configuration de PHP, le démarrage de
+MariaDB, le chargement du schéma et du jeu d'essai sont désormais confirmés sur Windows. Le téléchargement des outils, la configuration de PHP et le démarrage
 de MariaDB sont désormais confirmés sur Windows. Chaque correctif a été vérifié à part : contenu
 réel des archives PHP et MariaDB, fonctionnement de Composer avec un extracteur externe, lecture
 des accents, filtrage des avertissements, comportement du client MariaDB. La **fin du parcours

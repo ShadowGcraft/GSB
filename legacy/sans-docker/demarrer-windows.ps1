@@ -147,7 +147,11 @@ try {
     # n'active que les extensions reellement presentes dans ext\ : la liste
     # varie d'une version de PHP a l'autre, et activer une DLL absente fait
     # echouer PHP au demarrage.
-    $souhaitees = @('pdo_mysql','mysqli','mbstring','openssl','intl','curl','fileinfo','sodium','opcache')
+    # opcache est volontairement absente : c'est une extension Zend, qui se
+    # declare avec « zend_extension » et non « extension ». Elle n'apporte rien
+    # a un serveur de demonstration, et sa mauvaise declaration provoquait un
+    # avertissement a chaque appel de PHP.
+    $souhaitees = @('pdo_mysql','mysqli','mbstring','openssl','intl','curl','fileinfo','sodium')
     $activees = @()
     foreach ($ext in $souhaitees) {
         if (Test-Path (Join-Path $dossierExt "php_$ext.dll")) { $activees += $ext }
@@ -489,20 +493,76 @@ FLUSH PRIVILEGES;
         Invoke-WebRequest -Uri $UrlComposer -OutFile $composer -UseBasicParsing
     }
 
-    if (-not (Test-Path 'app\vendor')) {
-        Info 'installation des dépendances, comptez plusieurs minutes'
-        Push-Location 'app'
+    <#
+        Un dossier accepte-t-il l'ecriture d'une archive ?
+
+        Composer telecharge chaque dependance dans un fichier .zip temporaire.
+        Deux mecanismes de Windows l'en empechent souvent : la synchronisation
+        OneDrive du dossier Documents, qui verrouille les fichiers, et les
+        antivirus, qui refusent l'ecriture d'archives dans un dossier surveille.
+        Le symptome est un « Permission denied » sur un fichier tmp-....zip.
+    #>
+    function Test-EcritureZip([string]$Dossier) {
         try {
-            if (-not (Test-Path 'composer.json')) {
-                & $php -c $php_ini $composer create-project symfony/framework-standard-edition `
-                    "$env:TEMP\gsb-sf" "2.8.*" --no-interaction --prefer-dist --no-scripts
-                Copy-Item "$env:TEMP\gsb-sf\*" -Destination . -Recurse -Force
-                Remove-Item "$env:TEMP\gsb-sf" -Recurse -Force
+            New-Item -ItemType Directory -Force -Path $Dossier | Out-Null
+            $essai = Join-Path $Dossier ("essai-" + [guid]::NewGuid().ToString('N') + ".zip")
+            $entete = [byte[]](0x50, 0x4B, 0x05, 0x06)
+            [System.IO.File]::WriteAllBytes($essai, $entete + (New-Object byte[] 18))
+            Remove-Item $essai -Force
+            return $true
+        } catch {
+            Tracer "   ecriture zip refusee dans $Dossier : $($_.Exception.Message)"
+            return $false
+        }
+    }
+
+    if (-not (Test-Path 'app\vendor')) {
+        Info 'installation des dependances, comptez plusieurs minutes'
+
+        # Ou Composer peut-il travailler ? De preference dans le projet, sinon
+        # dans un dossier local, hors de Documents et donc de OneDrive.
+        $atelier = Join-Path $racine 'app'
+        if (-not (Test-EcritureZip (Join-Path $atelier 'vendor\composer'))) {
+            Souci "Ce dossier refuse l'ecriture d'archives : antivirus, ou"
+            Souci "synchronisation OneDrive du dossier Documents."
+            $atelier = Join-Path $env:LOCALAPPDATA 'gsb-atelier'
+            Info "repli sur un dossier local : $atelier"
+            if (-not (Test-EcritureZip (Join-Path $atelier 'vendor\composer'))) {
+                Echouer "Meme ce dossier local refuse l'ecriture d'archives.
+           Un antivirus bloque tres probablement les fichiers .zip.
+           Ajoutez une exception pour ce dossier, ou suspendez la protection
+           en temps reel le temps de l'installation."
             }
-            & $php -c $php_ini $composer install --no-interaction --no-scripts
+            New-Item -ItemType Directory -Force -Path $atelier | Out-Null
+            Copy-Item 'app\composer.json', 'app\composer.lock' -Destination $atelier -Force
+        }
+
+        Push-Location $atelier
+        try {
+            Detail "composer install dans $atelier"
+            # --no-autoloader : il sera regenere plus loin, une fois le dossier
+            # vendor a sa place definitive dans le projet.
+            Invoke-Php @('-c', $php_ini, $composer, 'install',
+                         '--no-interaction', '--no-scripts', '--no-autoloader', '--no-progress') |
+                ForEach-Object { Detail $_ }
         } finally { Pop-Location }
+
+        if (-not (Test-Path (Join-Path $atelier 'vendor\composer\installed.json'))) {
+            Echouer "L'installation des dependances a echoue.
+           Detail complet dans $script:Journal"
+        }
+
+        # Rapatriement si Composer a du travailler ailleurs.
+        if ($atelier -ne (Join-Path $racine 'app')) {
+            Info 'rapatriement des dependances dans le projet'
+            $cible = Join-Path $racine 'app\vendor'
+            if (Test-Path $cible) { Remove-Item $cible -Recurse -Force }
+            Move-Item (Join-Path $atelier 'vendor') $cible
+            Remove-Item $atelier -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        Info 'dependances installees'
     } else {
-        Info 'dépendances déjà installées'
+        Info 'dependances deja installees'
     }
 
     @"
@@ -529,14 +589,15 @@ parameters:
 
     Push-Location 'app'
     try {
-        # L'avertissement « continue targeting switch » vient de Symfony et de
-        # Doctrine sur PHP 7.4. Sans conséquence, mais très bavard : on le filtre.
-        & $php -c $php_ini $composer dump-autoload --quiet 2>&1 |
-            Where-Object { $_ -notmatch 'continue.*targeting switch' } | Out-Null
-        & $php 'vendor\sensio\distribution-bundle\Sensio\Bundle\DistributionBundle\Resources\bin\build_bootstrap.php' app 2>&1 |
-            Where-Object { $_ -notmatch 'continue.*targeting switch' } | Out-Null
-        & $php 'app\console' assets:install web --env=prod --no-debug --quiet 2>&1 |
-            Where-Object { $_ -notmatch 'continue.*targeting switch' } | Out-Null
+        # Symfony et Doctrine declenchent sur PHP 7.4 des avertissements dans
+        # leur propre code. Invoke-Php les absorbe : sans cela, PowerShell en
+        # ferait des exceptions fatales.
+        Detail 'regeneration de l autoloader'
+        Invoke-Php @('-c', $php_ini, $composer, 'dump-autoload', '--quiet') | Out-Null
+        Detail 'generation du fichier d amorcage'
+        Invoke-Php @('-c', $php_ini, 'vendor\sensio\distribution-bundle\Sensio\Bundle\DistributionBundle\Resources\bin\build_bootstrap.php', 'app') | Out-Null
+        Detail 'publication des ressources'
+        Invoke-Php @('-c', $php_ini, 'app\console', 'assets:install', 'web', '--env=prod', '--no-debug', '--quiet') | Out-Null
         if (Test-Path 'app\cache') { Remove-Item 'app\cache\*' -Recurse -Force -ErrorAction SilentlyContinue }
     } finally { Pop-Location }
 
