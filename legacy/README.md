@@ -9,11 +9,21 @@ Rien de ce dossier n'a vocation à finir dans l'application Symfony 7. Le nouvea
 
 ## Démarrer
 
+**Le plus simple** : double-cliquez, à la racine du dépôt, sur `Lancer-GSB-mac.command` sous macOS
+ou sur `Lancer-GSB-windows.bat` sous Windows. Le lanceur démarre Docker, met l'application en route
+et ouvre le navigateur. `Arreter-GSB-...` fait l'inverse.
+
+En ligne de commande :
+
 ```bash
-./mise-en-route.sh
+./mise-en-route.sh                      # macOS et Linux
+.\windows\mise-en-route.ps1             # Windows, dans PowerShell
 ```
 
-Puis ouvrir <http://localhost:8080>.
+Sous Windows, les prérequis s'installent une fois pour toutes avec
+`.\windows\installer-prerequis.ps1`. Voir `windows/README.md`.
+
+Puis ouvrir <http://localhost:8088>.
 
 | Visiteur | Identifiant | Mot de passe |
 | --- | --- | --- |
@@ -22,7 +32,7 @@ Puis ouvrir <http://localhost:8080>.
 | Pascal Bentot | `pbentot` | `doypa` |
 
 Le mode développement, avec la barre de débogage Symfony, est sur
-<http://localhost:8080/app_dev.php/accueil>.
+<http://localhost:8088/app_dev.php/accueil>.
 
 Pour arrêter : `docker compose down`. Pour repartir d'une base vierge : `docker compose down -v`,
 qui supprime le volume et rejoue le jeu d'essai au démarrage suivant.
@@ -125,7 +135,10 @@ documentés dans le cahier des charges, section 1.3, comme justification du proj
 legacy/
 ├── docker-compose.yml   Les deux services, et les réglages de base d'époque
 ├── Dockerfile           PHP 7.4, Apache, extensions
-├── mise-en-route.sh     Installation et démarrage, réexécutable sans risque
+├── mise-en-route.sh     Installation et démarrage sous macOS et Linux
+├── windows/             Les mêmes opérations en PowerShell, plus l'installation
+│   ├── installer-prerequis.ps1
+│   └── mise-en-route.ps1
 ├── sql/
 │   ├── 01-schema.sql    Schéma reconstitué, commenté requête par requête
 │   └── 02-donnees.sql   Jeu d'essai

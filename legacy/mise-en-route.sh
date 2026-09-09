@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Remet en marche l'application GSB de 2013 et l'ouvre sur http://localhost:8080
+# Remet en marche l'application GSB de 2013 et l'ouvre sur http://localhost:8088
 #
 # Le script est idempotent : on peut le relancer sans rien casser. Il ne touche
 # jamais au code du bundle, seulement à ce qui doit être installé ou généré.
@@ -41,6 +41,10 @@ else
 fi
 
 echo "==> 5/6  Fichiers générés : paramètres, amorçage, assets"
+# Composer cree les fichiers en 600 dans le conteneur. Le volume reflete ces
+# permissions sur l'hote et Apache, qui tourne en www-data, ne peut plus rien
+# lire : toutes les pages repondent alors 404.
+chmod -R a+rX app
 docker compose exec -T web sh -c '
     cd /var/www/html
     [ -f app/config/parameters.yml ] || cp app/config/parameters.yml.dist app/config/parameters.yml
@@ -57,12 +61,12 @@ docker compose exec -T web sh -c '
 '
 
 echo "==> 6/6  Vérification"
-code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/accueil || echo 000)
+code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8088/accueil || echo 000)
 if [ "$code" = "200" ]; then
     echo
-    echo "    L'application répond : http://localhost:8080"
+    echo "    L'application répond : http://localhost:8088"
     echo "    Comptes de démonstration : dandre / oppg5, cbedos / gvide, pbentot / doypa"
-    echo "    Mode développement, avec la barre de débogage : http://localhost:8080/app_dev.php/accueil"
+    echo "    Mode développement, avec la barre de débogage : http://localhost:8088/app_dev.php/accueil"
 else
     echo "    ÉCHEC : la page d'accueil renvoie $code"
     echo "    Journaux : docker compose logs web"

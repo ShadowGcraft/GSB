@@ -171,7 +171,12 @@ GSB/
 │   ├── assets/   Images et diagrammes utilisés par la documentation
 │   └── outils/   Conversion du Markdown vers Word et rendu des diagrammes
 ├── legacy/       Application GSB de 2013 remise en marche, référence fonctionnelle
+│   └── windows/  Installation et démarrage sous Windows, en PowerShell
 ├── _sources/     Sujet et documents fournis par l'enseignant (lecture seule)
+├── Lancer-GSB-mac.command       Double-clic : démarre l'application de 2013
+├── Lancer-GSB-windows.bat       Idem sous Windows
+├── Arreter-GSB-mac.command      Double-clic : l'arrête
+├── Arreter-GSB-windows.bat      Idem sous Windows
 ├── .gitignore    Règles d'exclusion commentées, communes aux trois briques
 ├── CONTRIBUTING.md  Conventions de travail à deux
 └── README.md

@@ -1,2 +1,34 @@
-# Auto detect text files and perform LF normalization
+# Normalisation des fins de ligne.
+#
+# Par defaut, Git normalise en LF dans le depot et restitue les fins de ligne
+# natives du poste au checkout : CRLF sous Windows.
 * text=auto
+
+# Fichiers executes DANS un conteneur Linux ou lus par un serveur Linux.
+# Ils doivent garder des fins de ligne LF meme sur un poste Windows, sinon :
+#   - un script shell echoue avec « $'\r': commande introuvable » ;
+#   - MariaDB rejette les scripts SQL d'initialisation ;
+#   - Apache et PHP interpretent mal les fichiers de configuration.
+*.sh        text eol=lf
+*.command   text eol=lf
+*.sql       text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+Dockerfile  text eol=lf
+*.twig      text eol=lf
+*.php       text eol=lf
+.htaccess   text eol=lf
+
+# Les scripts PowerShell sont executes par Windows : ils gardent des CRLF.
+*.ps1       text eol=crlf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# Fichiers binaires : aucune conversion.
+*.pdf   binary
+*.zip   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.ico   binary
+*.docx  binary

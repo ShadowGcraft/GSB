@@ -27,7 +27,9 @@ services:
   web:
     build: .
     ports:
-      - "8080:80"
+      # 8080 est frequemment pris sur le poste, notamment par llama.cpp :
+      # on publie sur 8088 pour eviter le conflit.
+      - "8088:80"
     volumes:
       - ./app:/var/www/html
     depends_on:
