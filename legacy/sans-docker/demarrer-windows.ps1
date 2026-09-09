@@ -20,7 +20,9 @@ param(
     [int]$PortWeb  = 8089,
     [int]$PortBase = 3307,
     # Repart d'une base vierge : efface les données et rejoue le jeu d'essai.
-    [switch]$BaseNeuve
+    [switch]$BaseNeuve,
+    # Affiche le détail de chaque étape, utile pour diagnostiquer un blocage.
+    [switch]$Verbeux
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,10 +42,43 @@ $UrlComposer = 'https://getcomposer.org/composer-stable.phar'
 # donc 7-Zip autonome, 385 Ko, sous licence LGPL.
 $Url7zip = 'https://www.7-zip.org/a/7za920.zip'
 
-function Titre($t) { Write-Host ''; Write-Host "==> $t" -ForegroundColor Cyan }
-function Info($t)  { Write-Host "    $t" -ForegroundColor DarkGray }
-function Souci($t) { Write-Host "    $t" -ForegroundColor Yellow }
-function Echouer($t) { Write-Host "    $t" -ForegroundColor Red; exit 1 }
+# Journal complet du deroulement, pour pouvoir diagnostiquer apres coup.
+$script:Journal = $null
+
+function Tracer($t) {
+    if ($script:Journal) {
+        $horodatage = (Get-Date).ToString('HH:mm:ss')
+        Add-Content -Path $script:Journal -Value "$horodatage  $t" -Encoding UTF8
+    }
+}
+function Titre($t) { Write-Host ''; Write-Host "==> $t" -ForegroundColor Cyan;   Tracer "== $t" }
+function Info($t)  { Write-Host "    $t" -ForegroundColor DarkGray;              Tracer "   $t" }
+function Detail($t) {
+    Tracer "   . $t"
+    if ($Verbeux) { Write-Host "      $t" -ForegroundColor DarkGray }
+}
+function Souci($t) { Write-Host "    $t" -ForegroundColor Yellow;                Tracer "!  $t" }
+
+function Echouer($t) {
+    Write-Host "    $t" -ForegroundColor Red
+    Tracer "ECHEC $t"
+    if ($script:Journal) {
+        Write-Host ''
+        Write-Host "    Journal complet : $script:Journal" -ForegroundColor Yellow
+    }
+    exit 1
+}
+
+# Affiche les dernieres lignes utiles d'un fichier de journal.
+function Montrer-Journal($chemin, $titre, $lignes = 25) {
+    if (-not (Test-Path $chemin)) { Write-Host "    ($titre : fichier absent)" -ForegroundColor DarkGray; return }
+    $contenu = Get-Content $chemin -Tail $lignes -ErrorAction SilentlyContinue
+    if (-not $contenu) { Write-Host "    ($titre : vide)" -ForegroundColor DarkGray; return }
+    Write-Host ''
+    Write-Host "    --- $titre ---" -ForegroundColor Yellow
+    $contenu | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray; Tracer "     | $_" }
+    Write-Host "    --- fin ---" -ForegroundColor Yellow
+}
 
 # Convertit les fins de ligne : les fichiers SQL du dépôt sont en LF, et les
 # commandes envoyées à des outils Unix ne supportent pas les CRLF.
@@ -55,6 +90,12 @@ try {
     $local = Join-Path $racine 'local'
     $binaires = Join-Path $local 'bin'
     New-Item -ItemType Directory -Force -Path $local, $binaires, "$local\log" | Out-Null
+
+    $script:Journal = Join-Path $local 'log\demarrage.log'
+    "=== Demarrage GSB sans Docker, $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ===" |
+        Set-Content -Path $script:Journal -Encoding UTF8
+    Tracer "PowerShell $($PSVersionTable.PSVersion)  |  port web $PortWeb  |  port base $PortBase"
+    Write-Host "    journal : $script:Journal" -ForegroundColor DarkGray
 
     # ------------------------------------------------------------------ 1
 
@@ -198,21 +239,34 @@ skip-name-resolve
         Info 'configuration écrite'
     }
 
+    $journalErreur = Join-Path $local 'log\mariadb-sortie.log'
+    $journalInit   = Join-Path $local 'log\init-db.log'
+
     if (-not (Test-Path (Join-Path $donnees 'mysql'))) {
-        Info 'initialisation des données, une seule fois'
-        & (Join-Path $mdbBin 'mysql_install_db.exe') `
-            "--datadir=$donnees" "--password=root" 2>&1 |
-            Out-File (Join-Path $local 'log\init-db.log')
+        Info "initialisation des donnees, une seule fois (peut prendre une minute)"
+        Detail "mysql_install_db.exe --datadir=$donnees"
+
+        $ancien = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            & (Join-Path $mdbBin 'mysql_install_db.exe') "--datadir=$donnees" "--password=root" 2>&1 |
+                Out-File -FilePath $journalInit -Encoding UTF8
+        } finally { $ErrorActionPreference = $ancien }
+
         if (-not (Test-Path (Join-Path $donnees 'mysql'))) {
-            Echouer "L'initialisation a échoué. Voir local\log\init-db.log"
+            Montrer-Journal $journalInit "initialisation de la base"
+            Echouer "L'initialisation de la base a echoue."
         }
+        Info 'donnees initialisees'
+    } else {
+        Detail 'donnees deja initialisees'
     }
 
     <#
-        Appelle le client MariaDB en lui donnant tout ce dont il a besoin :
-        le dossier de ses greffons, et une methode d'authentification simple.
-        Les avertissements ecrits sur la sortie d'erreur sont filtres, sans
-        quoi PowerShell les transforme en exception fatale.
+        Appelle le client MariaDB en lui donnant tout ce dont il a besoin : le
+        dossier de ses greffons, une methode d'authentification simple, et
+        surtout un DELAI D'ATTENTE. Sans lui, le client peut rester bloque
+        indefiniment quand le serveur ne repond pas, et le script parait fige.
     #>
     function Invoke-Mysql {
         param(
@@ -224,7 +278,7 @@ skip-name-resolve
         $parametres = @(
             "--host=127.0.0.1", "--port=$PortBase", "--user=root",
             "--plugin-dir=$mdbPlugins", "--default-auth=mysql_native_password",
-            "--protocol=tcp", "--skip-ssl", "-N", "-B"
+            "--protocol=tcp", "--skip-ssl", "--connect-timeout=5", "-N", "-B"
         )
         if ($MotDePasse) { $parametres += "--password=$MotDePasse" }
         if ($Base)       { $parametres += $Base }
@@ -235,55 +289,85 @@ skip-name-resolve
         try {
             $sortie = & (Join-Path $mdbBin 'mysql.exe') @parametres 2>&1
             $script:MysqlCode = $LASTEXITCODE
-            $texte = ($sortie | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n"
-            if (-not $Silencieux -and $script:MysqlCode -ne 0) {
-                $erreurs = ($sortie | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] }) -join ' '
-                if ($erreurs) { Info "  (client : $erreurs)" }
-            }
+            $texte   = ($sortie | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n"
+            $erreurs = ($sortie | Where-Object { $_ -is  [System.Management.Automation.ErrorRecord] }) -join ' '
+            $extrait = $Requete -replace "\s+", ' '
+            if ($extrait.Length -gt 60) { $extrait = $extrait.Substring(0, 60) + '...' }
+            Tracer "   mysql[$($script:MysqlCode)] $extrait"
+            if ($erreurs) { Tracer "   mysql erreur : $erreurs" }
+            if (-not $Silencieux -and $script:MysqlCode -ne 0 -and $erreurs) { Info "  (client : $erreurs)" }
             return $texte.Trim()
         } finally { $ErrorActionPreference = $ancien }
     }
 
-    # Le serveur repond-il, et est-ce bien le notre ?
-    $version = Invoke-Mysql -Requete "SELECT VERSION();" -Silencieux
+    # Le serveur repond-il deja, et est-ce bien le notre ?
+    Detail 'test de connexion au serveur'
+    $version  = Invoke-Mysql -Requete "SELECT VERSION();" -Silencieux
     $enMarche = ($script:MysqlCode -eq 0 -and $version)
 
     if (-not $enMarche) {
-        # Peut-etre un serveur demarre sans mot de passe root.
-        $version = Invoke-Mysql -Requete "SELECT VERSION();" -MotDePasse '' -Silencieux
+        $version  = Invoke-Mysql -Requete "SELECT VERSION();" -MotDePasse '' -Silencieux
         $enMarche = ($script:MysqlCode -eq 0 -and $version)
     }
 
     if (-not $enMarche) {
+        # Le port est-il tenu par un programme etranger au projet ?
         $occupe = Get-NetTCPConnection -LocalPort $PortBase -State Listen -ErrorAction SilentlyContinue
         if ($occupe) {
-            $proc = (Get-Process -Id $occupe[0].OwningProcess -ErrorAction SilentlyContinue)
+            $proc = Get-Process -Id $occupe[0].OwningProcess -ErrorAction SilentlyContinue
             $chemin = $null
             try { $chemin = $proc.Path } catch { }
+            Detail "port $PortBase deja ecoute par $($proc.ProcessName) ($chemin)"
             if ($chemin -and -not $chemin.StartsWith($binaires, 'OrdinalIgnoreCase')) {
-                Echouer "Le port $PortBase est occupe par « $($proc.ProcessName) », qui n'appartient
-           pas a ce projet : $chemin
+                Echouer "Le port $PortBase est occupe par « $($proc.ProcessName) », etranger au projet :
+           $chemin
            Relancez sur un autre port :
              .\sans-docker\demarrer-windows.ps1 -PortBase 3309"
             }
         }
 
-        Info "demarrage sur le port $PortBase"
-        Start-Process -FilePath (Join-Path $mdbBin 'mysqld.exe') `
-            -ArgumentList "--defaults-file=`"$mycnf`"", "--datadir=`"$donnees`"" `
-            -WindowStyle Hidden
+        Info "demarrage du serveur sur le port $PortBase"
+        Detail "mysqld.exe --defaults-file=$mycnf --datadir=$donnees"
 
-        foreach ($i in 1..30) {
+        # --console fait ecrire les erreurs sur la sortie standard, que l'on
+        # capture : sans cela, un demarrage rate ne laisse aucune trace visible.
+        $processus = Start-Process -FilePath (Join-Path $mdbBin 'mysqld.exe') `
+            -ArgumentList "--defaults-file=`"$mycnf`"", "--datadir=`"$donnees`"", "--console" `
+            -WindowStyle Hidden -PassThru `
+            -RedirectStandardOutput $journalErreur `
+            -RedirectStandardError  "$journalErreur.err"
+
+        Detail "processus mysqld demarre, identifiant $($processus.Id)"
+
+        $enMarche = $false
+        foreach ($i in 1..20) {
             Start-Sleep -Seconds 2
+
+            # Le processus a-t-il rendu l'ame ? Inutile d'attendre la fin du delai.
+            if ($processus.HasExited) {
+                Souci "mysqld s'est arrete tout seul, code $($processus.ExitCode)."
+                Montrer-Journal "$journalErreur.err" 'sortie d''erreur de mysqld'
+                Montrer-Journal $journalErreur        'sortie de mysqld'
+                $err = Get-ChildItem $donnees -Filter '*.err' -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($err) { Montrer-Journal $err.FullName "journal MariaDB ($($err.Name))" }
+                Echouer "Le serveur de base de donnees n'a pas pu demarrer."
+            }
+
             $version = Invoke-Mysql -Requete "SELECT VERSION();" -Silencieux
             if ($script:MysqlCode -eq 0 -and $version) { $enMarche = $true; break }
             $version = Invoke-Mysql -Requete "SELECT VERSION();" -MotDePasse '' -Silencieux
             if ($script:MysqlCode -eq 0 -and $version) { $enMarche = $true; break }
+
+            if ($i % 3 -eq 0) { Info "  toujours en attente... $($i * 2) s" }
         }
 
         if (-not $enMarche) {
-            Echouer "La base n'a pas repondu apres une minute.
-           Journaux : local\log\  et le fichier .err du dossier local\mysql\data\"
+            Souci "Le serveur n'a pas repondu au bout de 40 secondes."
+            Montrer-Journal "$journalErreur.err" 'sortie d''erreur de mysqld'
+            Montrer-Journal $journalErreur        'sortie de mysqld'
+            $err = Get-ChildItem $donnees -Filter '*.err' -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($err) { Montrer-Journal $err.FullName "journal MariaDB ($($err.Name))" }
+            Echouer "La base n'a pas repondu."
         }
     }
     Info "base en marche : MariaDB $version"

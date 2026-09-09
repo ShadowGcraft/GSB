@@ -34,9 +34,29 @@ récupérer environ 400 Mo.
 Options :
 
 ```powershell
-.\legacy\sans-docker\demarrer-windows.ps1 -PortWeb 8091   # si 8089 est pris
-.\legacy\sans-docker\demarrer-windows.ps1 -BaseNeuve      # repart d'une base vierge
+.\legacy\sans-docker\demarrer-windows.ps1 -PortWeb 8091    # si 8089 est pris
+.\legacy\sans-docker\demarrer-windows.ps1 -PortBase 3309   # si 3307 est pris
+.\legacy\sans-docker\demarrer-windows.ps1 -BaseNeuve       # repart d'une base vierge
+.\legacy\sans-docker\demarrer-windows.ps1 -Verbeux         # détaille chaque étape
 ```
+
+### En cas de blocage
+
+Le script écrit tout ce qu'il fait dans `legacy\local\log\demarrage.log`, horodaté : commandes
+lancées, requêtes envoyées à la base, codes de retour. C'est le premier fichier à ouvrir.
+
+Trois autres journaux complètent le tableau, dans le même dossier :
+
+| Fichier | Contenu |
+| --- | --- |
+| `mariadb-sortie.log` et `.err` | Ce que le serveur de base écrit au démarrage |
+| `init-db.log` | L'initialisation des données, au tout premier lancement |
+| `php-server.log` | Le serveur web |
+
+Le serveur de base est surveillé pendant son démarrage : s'il s'arrête, le script le détecte tout
+de suite, affiche ses journaux et celui de MariaDB, et s'arrête au lieu d'attendre. Les appels au
+client ont un délai d'attente de cinq secondes, ce qui évite qu'une connexion sans réponse fige la
+fenêtre.
 
 ## Comparaison des deux modes
 
