@@ -1,4 +1,4 @@
-<#
+﻿<#
     Démarre l'application GSB de 2013 SANS DOCKER, sous Windows.
 
     Tout est portable : PHP 7.4 et MariaDB sont téléchargés en archive dans
@@ -34,6 +34,11 @@ $VersionMariaDb = '10.6.21'
 $UrlPhp     = "https://windows.php.net/downloads/releases/archives/php-$VersionPhp-Win32-vc15-x64.zip"
 $UrlMariaDb = "https://archive.mariadb.org/mariadb-$VersionMariaDb/winx64-packages/mariadb-$VersionMariaDb-winx64.zip"
 $UrlComposer = 'https://getcomposer.org/composer-stable.phar'
+# PHP 7.4 pour Windows ne fournit PAS l'extension zip : verifie, l'archive
+# officielle ne contient aucun php_zip.dll. Composer ne peut alors extraire
+# aucune dependance, sauf s'il trouve 7z ou unzip dans le PATH. On embarque
+# donc 7-Zip autonome, 385 Ko, sous licence LGPL.
+$Url7zip = 'https://www.7-zip.org/a/7za920.zip'
 
 function Titre($t) { Write-Host ''; Write-Host "==> $t" -ForegroundColor Cyan }
 function Info($t)  { Write-Host "    $t" -ForegroundColor DarkGray }
@@ -91,39 +96,73 @@ try {
     Titre '2/6  Configuration de PHP'
 
     $php_ini = Join-Path $dossierPhp 'php.ini'
-    if (-not (Test-Path $php_ini)) {
-        # L'archive Windows ne fournit que des modèles, sans extension activée.
-        @"
-; Configuration PHP pour l'application GSB de 2013.
-; Genere par sans-docker\demarrer-windows.ps1
-extension_dir = "$($dossierPhp -replace '\\','\\')\\ext"
-extension=pdo_mysql
-extension=mysqli
-extension=mbstring
-extension=openssl
-extension=intl
-extension=curl
-extension=fileinfo
-extension=zip
-date.timezone = Europe/Paris
-memory_limit = 512M
-"@ | Set-Content -Path $php_ini -Encoding ASCII
-        Info 'php.ini écrit, extensions activées'
-    } else {
-        Info 'php.ini déjà présent'
+    $dossierExt = Join-Path $dossierPhp 'ext'
+
+    # L'archive Windows ne fournit qu'un modele, sans extension activee. On
+    # n'active que les extensions reellement presentes dans ext\ : la liste
+    # varie d'une version de PHP a l'autre, et activer une DLL absente fait
+    # echouer PHP au demarrage.
+    $souhaitees = @('pdo_mysql','mysqli','mbstring','openssl','intl','curl','fileinfo','sodium','opcache')
+    $activees = @()
+    foreach ($ext in $souhaitees) {
+        if (Test-Path (Join-Path $dossierExt "php_$ext.dll")) { $activees += $ext }
     }
 
-    $versionPhpReelle = (& $php -r 'echo PHP_VERSION;' 2>$null)
-    if (-not $versionPhpReelle) { Echouer 'PHP ne répond pas.' }
+    $lignes = @(
+        "; Configuration PHP pour l'application GSB de 2013.",
+        "; Genere par sans-docker\demarrer-windows.ps1",
+        "extension_dir = `"$dossierExt`""
+    )
+    $lignes += ($activees | ForEach-Object { "extension=$_" })
+    $lignes += @('date.timezone = Europe/Paris', 'memory_limit = 512M')
+    $lignes -join "`r`n" | Set-Content -Path $php_ini -Encoding ASCII
+    Info "php.ini ecrit, $($activees.Count) extensions activees : $($activees -join ', ')" 
+
+    # Un avertissement ecrit par php.exe sur la sortie d'erreur devient une
+    # exception fatale quand ErrorActionPreference vaut Stop. On l'abaisse
+    # localement, et on ne juge que sur la valeur renvoyee.
+    function Invoke-Php {
+        param([string[]]$Arguments)
+        $ancien = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $sortie = & $php @Arguments 2>&1
+            return (($sortie | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join '').Trim()
+        } finally {
+            $ErrorActionPreference = $ancien
+        }
+    }
+
+    $versionPhpReelle = Invoke-Php @('-n', '-r', 'echo PHP_VERSION;')
+    if (-not $versionPhpReelle) { Echouer 'PHP ne repond pas.' }
     Info "PHP $versionPhpReelle"
 
+    # zip ne figure pas dans cette liste : PHP 7.4 pour Windows ne la fournit
+    # pas, et c'est 7-Zip qui prend le relais pour Composer.
     $manquantes = @()
-    foreach ($ext in @('pdo_mysql', 'mbstring', 'intl', 'zip')) {
-        $sortie = & $php -r "echo extension_loaded('$ext') ? 'oui' : 'non';" 2>$null
-        if ($sortie -ne 'oui') { $manquantes += $ext }
+    foreach ($ext in @('pdo_mysql', 'mbstring')) {
+        if ((Invoke-Php @('-r', "echo extension_loaded('$ext') ? 'oui' : 'non';")) -ne 'oui') {
+            $manquantes += $ext
+        }
     }
-    if ($manquantes.Count) { Echouer "Extensions PHP absentes : $($manquantes -join ', ')" }
-    Info 'extensions requises chargées'
+    if ($manquantes.Count) { Echouer "Extensions PHP indispensables absentes : $($manquantes -join ', ')" }
+    Info 'extensions indispensables chargees'
+
+    # 7-Zip autonome : Composer s'en sert pour extraire les dependances.
+    $dossier7z = Join-Path $binaires '7zip'
+    $exe7z     = Join-Path $dossier7z '7za.exe'
+    if (-not (Test-Path $exe7z)) {
+        $zip7 = Join-Path $local '7zip.zip'
+        if (-not (Test-Path $zip7)) {
+            Info 'telechargement de 7-Zip autonome, 385 Ko'
+            Invoke-WebRequest -Uri $Url7zip -OutFile $zip7 -UseBasicParsing
+        }
+        Expand-Archive -Path $zip7 -DestinationPath $dossier7z -Force
+    }
+    if (-not (Test-Path $exe7z)) { Echouer '7-Zip introuvable apres extraction.' }
+    # Composer cherche « 7z » ou « 7za » dans le PATH du processus.
+    $env:PATH = "$dossier7z;$env:PATH"
+    Info '7-Zip disponible pour Composer'
 
     # ------------------------------------------------------------------ 3
 
@@ -229,12 +268,12 @@ skip-name-resolve
         Push-Location 'app'
         try {
             if (-not (Test-Path 'composer.json')) {
-                & $php $composer create-project symfony/framework-standard-edition `
+                & $php -c $php_ini $composer create-project symfony/framework-standard-edition `
                     "$env:TEMP\gsb-sf" "2.8.*" --no-interaction --prefer-dist --no-scripts
                 Copy-Item "$env:TEMP\gsb-sf\*" -Destination . -Recurse -Force
                 Remove-Item "$env:TEMP\gsb-sf" -Recurse -Force
             }
-            & $php $composer install --no-interaction --no-scripts
+            & $php -c $php_ini $composer install --no-interaction --no-scripts
         } finally { Pop-Location }
     } else {
         Info 'dépendances déjà installées'
@@ -266,7 +305,7 @@ parameters:
     try {
         # L'avertissement « continue targeting switch » vient de Symfony et de
         # Doctrine sur PHP 7.4. Sans conséquence, mais très bavard : on le filtre.
-        & $php $composer dump-autoload --quiet 2>&1 |
+        & $php -c $php_ini $composer dump-autoload --quiet 2>&1 |
             Where-Object { $_ -notmatch 'continue.*targeting switch' } | Out-Null
         & $php 'vendor\sensio\distribution-bundle\Sensio\Bundle\DistributionBundle\Resources\bin\build_bootstrap.php' app 2>&1 |
             Where-Object { $_ -notmatch 'continue.*targeting switch' } | Out-Null

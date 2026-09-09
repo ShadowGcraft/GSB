@@ -1,4 +1,4 @@
-<#
+﻿<#
     Installation des prérequis Windows pour faire tourner l'application GSB de 2013.
 
     Ce script installe ce qui manque, et rien d'autre : il vérifie chaque outil

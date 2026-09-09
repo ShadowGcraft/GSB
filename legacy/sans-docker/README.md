@@ -83,6 +83,26 @@ Supprimez `legacy/local/` : binaires, base et journaux disparaissent. Le prochai
 reconstruit tout. Pour ne réinitialiser que les données, supprimez `legacy/local/mysql/data`, ou
 utilisez `-BaseNeuve` sous Windows.
 
+## Trois particularités de Windows
+
+Ces trois points ont été découverts au premier essai sur un vrai poste, et corrigés.
+
+**PHP 7.4 pour Windows ne fournit pas l'extension `zip`.** Ce n'est pas une omission de notre part :
+l'archive officielle `php-7.4.33-Win32-vc15-x64.zip` ne contient aucun `php_zip.dll`, sur les
+quarante extensions qu'elle livre. Or Composer en a besoin pour extraire les dépendances, et il
+refuse de démarrer sans elle, y compris avec `--prefer-source`. Le script télécharge donc 7-Zip
+autonome, 385 Ko sous licence LGPL, et l'ajoute au chemin de recherche : Composer le détecte et
+s'en sert. Le fonctionnement de ce contournement a été vérifié.
+
+**Les accents.** PowerShell 5.1, celui livré avec Windows, lit un script sans marque d'ordre
+d'octets comme du texte ANSI : « téléchargement » s'affichait « tÃ©lÃ©chargement ». Les quatre
+scripts sont désormais enregistrés en UTF-8 avec cette marque.
+
+**Un avertissement suffisait à tout arrêter.** Quand PHP écrit sur la sortie d'erreur, PowerShell
+en fait une exception fatale si `ErrorActionPreference` vaut `Stop`. Le script abaisse maintenant ce
+réglage autour des appels à PHP et ne juge que sur la valeur renvoyée. Il n'active en outre que les
+extensions réellement présentes dans le dossier `ext\`, au lieu d'une liste écrite à l'avance.
+
 ## Ce qui a été vérifié
 
 Le mode macOS a été **exécuté et testé** de bout en bout : installation, initialisation de la base,
@@ -90,11 +110,13 @@ chargement du schéma, connexion, saisie forfaitisée, ajout d'un frais hors for
 d'une fiche clôturée, feuilles de style et logo. La bascule entre les deux modes a été testée dans
 les deux sens.
 
-Le mode Windows a été **écrit et validé syntaxiquement**, avec ses commandes vérifiées et la
-conversion des fins de ligne testée, mais **il n'a pas pu être exécuté sur un vrai poste Windows**,
-faute de machine. Signalez ce qui coince.
+Le mode Windows a été **essayé sur un vrai poste**, ce qui a révélé les trois problèmes décrits
+plus haut. Ils sont corrigés, et chaque correctif a été vérifié à part : contenu réel de l'archive
+PHP, fonctionnement de Composer avec un extracteur externe, lecture des accents, filtrage des
+avertissements. La **suite du parcours reste à confirmer** : initialisation de MariaDB, installation
+des dépendances, démarrage du serveur.
 
-Deux points méritent l'attention lors du premier essai sous Windows : les liens symboliques
-n'existant pas de la même façon, `assets:install` copie les fichiers au lieu de les lier, et le
-script duplique ensuite le dossier sous le nom attendu par les gabarits de 2013 ; par ailleurs,
-si un antivirus bloque l'exécution de `mysqld.exe` téléchargé, il faut l'autoriser.
+Deux points méritent encore l'attention : les liens symboliques n'existant pas de la même façon,
+`assets:install` copie les fichiers au lieu de les lier, et le script duplique ensuite le dossier
+sous le nom attendu par les gabarits de 2013 ; par ailleurs, si un antivirus bloque l'exécution de
+`mysqld.exe` téléchargé, il faut l'autoriser.

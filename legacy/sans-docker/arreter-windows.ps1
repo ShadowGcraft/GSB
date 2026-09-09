@@ -1,4 +1,4 @@
-<#
+﻿<#
     Arrête l'application GSB lancée sans Docker, sous Windows.
 
     Les données sont conservées dans legacy\local\mysql\data.

@@ -1,4 +1,4 @@
-<#
+﻿<#
     Démarre l'application GSB de 2013 sous Windows.
 
     Équivalent PowerShell de legacy/mise-en-route.sh, utilisé sous macOS et Linux.
