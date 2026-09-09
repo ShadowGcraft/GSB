@@ -89,7 +89,11 @@ try {
     $dossierMdb = Join-Path $binaires 'mariadb'
     Obtenir-Archive 'mariadb' $UrlMariaDb $dossierMdb `
         (Join-Path $dossierMdb "mariadb-$VersionMariaDb-winx64\bin\mysqld.exe")
-    $mdbBin = Join-Path $dossierMdb "mariadb-$VersionMariaDb-winx64\bin"
+    $mdbBin    = Join-Path $dossierMdb "mariadb-$VersionMariaDb-winx64\bin"
+    # Le client cherche ses greffons d'authentification a cote de lui. Lance
+    # depuis un autre dossier, il ne les trouve pas et echoue sur un message
+    # trompeur du type « Plugin caching_sha2_password could not be loaded ».
+    $mdbPlugins = Join-Path $dossierMdb "mariadb-$VersionMariaDb-winx64\lib\plugin"
 
     # ------------------------------------------------------------------ 2
 
@@ -204,53 +208,122 @@ skip-name-resolve
         }
     }
 
-    # Le serveur tourne-t-il déjà ?
-    $enMarche = $false
-    try {
-        $test = Test-NetConnection -ComputerName 127.0.0.1 -Port $PortBase `
-                    -InformationLevel Quiet -WarningAction SilentlyContinue
-        $enMarche = $test
-    } catch { $enMarche = $false }
+    <#
+        Appelle le client MariaDB en lui donnant tout ce dont il a besoin :
+        le dossier de ses greffons, et une methode d'authentification simple.
+        Les avertissements ecrits sur la sortie d'erreur sont filtres, sans
+        quoi PowerShell les transforme en exception fatale.
+    #>
+    function Invoke-Mysql {
+        param(
+            [string]$Requete,
+            [string]$MotDePasse = 'root',
+            [string]$Base = '',
+            [switch]$Silencieux
+        )
+        $parametres = @(
+            "--host=127.0.0.1", "--port=$PortBase", "--user=root",
+            "--plugin-dir=$mdbPlugins", "--default-auth=mysql_native_password",
+            "--protocol=tcp", "--skip-ssl", "-N", "-B"
+        )
+        if ($MotDePasse) { $parametres += "--password=$MotDePasse" }
+        if ($Base)       { $parametres += $Base }
+        $parametres += @("-e", $Requete)
+
+        $ancien = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $sortie = & (Join-Path $mdbBin 'mysql.exe') @parametres 2>&1
+            $script:MysqlCode = $LASTEXITCODE
+            $texte = ($sortie | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n"
+            if (-not $Silencieux -and $script:MysqlCode -ne 0) {
+                $erreurs = ($sortie | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] }) -join ' '
+                if ($erreurs) { Info "  (client : $erreurs)" }
+            }
+            return $texte.Trim()
+        } finally { $ErrorActionPreference = $ancien }
+    }
+
+    # Le serveur repond-il, et est-ce bien le notre ?
+    $version = Invoke-Mysql -Requete "SELECT VERSION();" -Silencieux
+    $enMarche = ($script:MysqlCode -eq 0 -and $version)
 
     if (-not $enMarche) {
-        Info "démarrage sur le port $PortBase"
+        # Peut-etre un serveur demarre sans mot de passe root.
+        $version = Invoke-Mysql -Requete "SELECT VERSION();" -MotDePasse '' -Silencieux
+        $enMarche = ($script:MysqlCode -eq 0 -and $version)
+    }
+
+    if (-not $enMarche) {
+        $occupe = Get-NetTCPConnection -LocalPort $PortBase -State Listen -ErrorAction SilentlyContinue
+        if ($occupe) {
+            $proc = (Get-Process -Id $occupe[0].OwningProcess -ErrorAction SilentlyContinue)
+            $chemin = $null
+            try { $chemin = $proc.Path } catch { }
+            if ($chemin -and -not $chemin.StartsWith($binaires, 'OrdinalIgnoreCase')) {
+                Echouer "Le port $PortBase est occupe par « $($proc.ProcessName) », qui n'appartient
+           pas a ce projet : $chemin
+           Relancez sur un autre port :
+             .\sans-docker\demarrer-windows.ps1 -PortBase 3309"
+            }
+        }
+
+        Info "demarrage sur le port $PortBase"
         Start-Process -FilePath (Join-Path $mdbBin 'mysqld.exe') `
             -ArgumentList "--defaults-file=`"$mycnf`"", "--datadir=`"$donnees`"" `
             -WindowStyle Hidden
 
-        $pret = $false
         foreach ($i in 1..30) {
             Start-Sleep -Seconds 2
-            try {
-                if (Test-NetConnection -ComputerName 127.0.0.1 -Port $PortBase `
-                        -InformationLevel Quiet -WarningAction SilentlyContinue) { $pret = $true; break }
-            } catch { }
+            $version = Invoke-Mysql -Requete "SELECT VERSION();" -Silencieux
+            if ($script:MysqlCode -eq 0 -and $version) { $enMarche = $true; break }
+            $version = Invoke-Mysql -Requete "SELECT VERSION();" -MotDePasse '' -Silencieux
+            if ($script:MysqlCode -eq 0 -and $version) { $enMarche = $true; break }
         }
-        if (-not $pret) { Echouer "La base n'a pas démarré. Voir local\log" }
+
+        if (-not $enMarche) {
+            Echouer "La base n'a pas repondu apres une minute.
+           Journaux : local\log\  et le fichier .err du dossier local\mysql\data\"
+        }
     }
-    Info 'base de données en marche'
+    Info "base en marche : MariaDB $version"
+
+    # Les comptes root doivent exister pour localhost ET 127.0.0.1, avec une
+    # authentification par mot de passe classique. Sans cela, la connexion TCP
+    # de PHP est refusee, ou reclame un greffon absent.
+    $sansMdp = Invoke-Mysql -Requete "SELECT 1;" -MotDePasse '' -Silencieux
+    $motDePasseCourant = if ($script:MysqlCode -eq 0 -and $sansMdp) { '' } else { 'root' }
+
+    $sql = @"
+CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED BY 'root';
+CREATE USER IF NOT EXISTS 'root'@'localhost' IDENTIFIED BY 'root';
+ALTER USER 'root'@'127.0.0.1' IDENTIFIED VIA mysql_native_password USING PASSWORD('root');
+ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('root');
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+"@
+    Invoke-Mysql -Requete (Sans-CR $sql) -MotDePasse $motDePasseCourant -Silencieux | Out-Null
+    Info 'comptes root verifies'
 
     # ------------------------------------------------------------------ 4
 
-    Titre '4/6  Schéma et jeu d''essai'
+    Titre "4/6  Schema et jeu d'essai"
 
-    $mysql = Join-Path $mdbBin 'mysql.exe'
-    $compte = & $mysql "-h127.0.0.1" "-P$PortBase" "-uroot" "-proot" "-sN" `
-        "-e" "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='bd_gsb';" 2>$null
+    $compte = Invoke-Mysql -Requete "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='bd_gsb';"
+    if ($script:MysqlCode -ne 0) { Echouer "Connexion a la base impossible apres configuration des comptes." }
 
     if ([string]::IsNullOrWhiteSpace($compte) -or [int]$compte -lt 6) {
-        & $mysql "-h127.0.0.1" "-P$PortBase" "-uroot" "-proot" `
-            "-e" "CREATE DATABASE IF NOT EXISTS bd_gsb CHARACTER SET utf8;" 2>$null
+        Invoke-Mysql -Requete "CREATE DATABASE IF NOT EXISTS bd_gsb CHARACTER SET utf8;" | Out-Null
 
         foreach ($f in @('sql\01-schema.sql', 'sql\02-donnees.sql')) {
-            # Le contenu est passé sur l'entrée standard, débarrassé des CRLF.
-            $sql = Sans-CR (Get-Content $f -Raw)
-            $sql | & $mysql "-h127.0.0.1" "-P$PortBase" "-uroot" "-proot" "bd_gsb"
-            if ($LASTEXITCODE -ne 0) { Echouer "Le chargement de $f a échoué." }
-            Info "$f chargé"
+            $sqlFichier = Sans-CR (Get-Content $f -Raw)
+            Invoke-Mysql -Requete $sqlFichier -Base 'bd_gsb' | Out-Null
+            if ($script:MysqlCode -ne 0) { Echouer "Le chargement de $f a echoue." }
+            Info "$f charge"
         }
     } else {
-        Info "base déjà peuplée, $compte tables"
+        Info "base deja peuplee, $compte tables"
     }
 
     # ------------------------------------------------------------------ 5

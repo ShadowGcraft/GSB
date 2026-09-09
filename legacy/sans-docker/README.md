@@ -83,9 +83,9 @@ Supprimez `legacy/local/` : binaires, base et journaux disparaissent. Le prochai
 reconstruit tout. Pour ne réinitialiser que les données, supprimez `legacy/local/mysql/data`, ou
 utilisez `-BaseNeuve` sous Windows.
 
-## Trois particularités de Windows
+## Quatre particularités de Windows
 
-Ces trois points ont été découverts au premier essai sur un vrai poste, et corrigés.
+Ces quatre points ont été découverts en essayant sur un vrai poste, et corrigés.
 
 **PHP 7.4 pour Windows ne fournit pas l'extension `zip`.** Ce n'est pas une omission de notre part :
 l'archive officielle `php-7.4.33-Win32-vc15-x64.zip` ne contient aucun `php_zip.dll`, sur les
@@ -97,6 +97,14 @@ s'en sert. Le fonctionnement de ce contournement a été vérifié.
 **Les accents.** PowerShell 5.1, celui livré avec Windows, lit un script sans marque d'ordre
 d'octets comme du texte ANSI : « téléchargement » s'affichait « tÃ©lÃ©chargement ». Les quatre
 scripts sont désormais enregistrés en UTF-8 avec cette marque.
+
+**Le client MariaDB ne trouvait pas ses greffons.** L'erreur était trompeuse :
+`Plugin caching_sha2_password could not be loaded`, un nom qui évoque MySQL 8 et laisse croire à un
+serveur étranger sur le port. En réalité MariaDB fournit bien ce greffon, dans `lib\plugin\`, mais
+le client le cherche à côté de lui : lancé depuis un autre dossier, il ne le trouve pas. Les appels
+au client passent maintenant `--plugin-dir` et demandent l'authentification classique par mot de
+passe. Le script crée par ailleurs explicitement les comptes `root` pour `localhost` et pour
+`127.0.0.1`, sans quoi la connexion réseau de PHP est refusée.
 
 **Un avertissement suffisait à tout arrêter.** Quand PHP écrit sur la sortie d'erreur, PowerShell
 en fait une exception fatale si `ErrorActionPreference` vaut `Stop`. Le script abaisse maintenant ce
@@ -110,11 +118,12 @@ chargement du schéma, connexion, saisie forfaitisée, ajout d'un frais hors for
 d'une fiche clôturée, feuilles de style et logo. La bascule entre les deux modes a été testée dans
 les deux sens.
 
-Le mode Windows a été **essayé sur un vrai poste**, ce qui a révélé les trois problèmes décrits
-plus haut. Ils sont corrigés, et chaque correctif a été vérifié à part : contenu réel de l'archive
-PHP, fonctionnement de Composer avec un extracteur externe, lecture des accents, filtrage des
-avertissements. La **suite du parcours reste à confirmer** : initialisation de MariaDB, installation
-des dépendances, démarrage du serveur.
+Le mode Windows a été **essayé sur un vrai poste**, en deux passes, ce qui a révélé les quatre
+problèmes décrits plus haut. Le téléchargement des outils, la configuration de PHP et le démarrage
+de MariaDB sont désormais confirmés sur Windows. Chaque correctif a été vérifié à part : contenu
+réel des archives PHP et MariaDB, fonctionnement de Composer avec un extracteur externe, lecture
+des accents, filtrage des avertissements, comportement du client MariaDB. La **fin du parcours
+reste à confirmer** : chargement du schéma, installation des dépendances, démarrage du serveur web.
 
 Deux points méritent encore l'attention : les liens symboliques n'existant pas de la même façon,
 `assets:install` copie les fichiers au lieu de les lier, et le script duplique ensuite le dossier
