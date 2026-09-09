@@ -262,8 +262,42 @@ try {
         return 0
     }
 
+    <#
+        Une instance du projet tourne-t-elle deja ?
+
+        Les fichiers de donnees d'InnoDB ne supportent qu'un seul serveur a la
+        fois. Lancer une seconde instance sur un autre port echoue avec
+        « The data file './ibdata1' must be writable », message qui ne dit rien
+        du vrai probleme. On cherche donc d'abord un mysqld issu de ce projet,
+        et on le reutilise au lieu d'en demarrer un autre.
+    #>
+    $dejaLa = Get-Process -Name 'mysqld' -ErrorAction SilentlyContinue | Where-Object {
+        try { $_.Path -and $_.Path.StartsWith($binaires, 'OrdinalIgnoreCase') } catch { $false }
+    }
+
+    if ($dejaLa) {
+        # Le port de cette instance est celui qu'indique le fichier deja ecrit.
+        $portExistant = 0
+        if (Test-Path $mycnf) {
+            $ligne = Select-String -Path $mycnf -Pattern '^\s*port\s*=\s*(\d+)' -ErrorAction SilentlyContinue |
+                     Select-Object -First 1
+            if ($ligne) { $portExistant = [int]$ligne.Matches[0].Groups[1].Value }
+        }
+        if ($portExistant -gt 0) {
+            Info "un serveur du projet tourne deja sur le port $portExistant, il est reutilise"
+            Tracer "instance existante : pid $($dejaLa[0].Id), port $portExistant"
+            $PortBase = $portExistant
+        } else {
+            Souci "Un serveur du projet tourne, mais son port est introuvable."
+            Souci "Arretez-le avec .\sans-docker\arreter-windows.ps1 puis relancez."
+            Echouer "Impossible de determiner le port du serveur en cours."
+        }
+    }
+
     $portDemande = $PortBase
-    $PortBase = Trouver-Port $PortBase @(3307, 3309, 3310, 3316, 13306, 23306, 33306)
+    if (-not $dejaLa) {
+        $PortBase = Trouver-Port $PortBase @(3307, 3309, 3310, 3316, 13306, 23306, 33306)
+    }
     if ($PortBase -eq 0) {
         Write-Host ''
         Souci "Aucun port de base de donnees disponible."
@@ -279,9 +313,11 @@ try {
         Tracer "port de base : $portDemande demande, $PortBase retenu"
     }
 
-    # La configuration est REECRITE a chaque lancement : sans cela, un port
-    # choisi au premier demarrage resterait fige dans le fichier, et le serveur
-    # continuerait d'ecouter l'ancien pendant que le client interroge le nouveau.
+    # La configuration est reecrite a chaque lancement, sauf si un serveur tourne
+    # deja : sans cela, un port choisi au premier demarrage resterait fige dans
+    # le fichier, et le serveur ecouterait l'ancien pendant que le client
+    # interroge le nouveau.
+    if (-not $dejaLa) {
     @"
 # Instance MariaDB dediee a l'application GSB de 2013, isolee du poste.
 # Fichier regenere a chaque lancement par sans-docker\demarrer-windows.ps1.
@@ -296,7 +332,8 @@ sql_mode                =
 lower_case_table_names  = 1
 skip-name-resolve
 "@ | Set-Content -Path $mycnf -Encoding ASCII
-    Info "configuration ecrite, port $PortBase"
+        Info "configuration ecrite, port $PortBase"
+    }
 
     $journalErreur = Join-Path $local 'log\mariadb-sortie.log'
     $journalInit   = Join-Path $local 'log\init-db.log'
@@ -410,7 +447,24 @@ skip-name-resolve
                 Montrer-Journal $journalErreur        'sortie de mysqld'
                 $err = Get-ChildItem $donnees -Filter '*.err' -ErrorAction SilentlyContinue | Select-Object -First 1
                 if ($err) { Montrer-Journal $err.FullName "journal MariaDB ($($err.Name))" }
-                    if ((Get-Content "$journalErreur.err" -Raw -ErrorAction SilentlyContinue) -match '10013') {
+                    $sortieErr = Get-Content "$journalErreur.err" -Raw -ErrorAction SilentlyContinue
+                if ($sortieErr -match 'must be writable|Unknown/unsupported storage engine') {
+                    Write-Host ''
+                    Souci "Les fichiers de donnees sont deja utilises par un autre serveur."
+                    Write-Host '    Un serveur MariaDB de ce projet tourne encore, sans doute' -ForegroundColor Yellow
+                    Write-Host '    lance par une execution precedente. Arretez-le :' -ForegroundColor Yellow
+                    Write-Host '      .\sans-docker\arreter-windows.ps1' -ForegroundColor Yellow
+                    Write-Host '    puis relancez ce script.' -ForegroundColor Yellow
+                    $autres = Get-Process -Name 'mysqld' -ErrorAction SilentlyContinue
+                    if ($autres) {
+                        Write-Host '    Processus mysqld actuellement en memoire :' -ForegroundColor Yellow
+                        $autres | ForEach-Object {
+                            $c = try { $_.Path } catch { '(chemin inconnu)' }
+                            Write-Host "      pid $($_.Id)  $c" -ForegroundColor DarkGray
+                        }
+                    }
+                }
+                if ($sortieErr -match '10013') {
                     Write-Host ''
                     Souci "L'erreur 10013 signifie que Windows INTERDIT l'ecoute sur ce port."
                     Write-Host '    Ce n''est pas qu''un autre serveur l''occupe : Hyper-V et WSL' -ForegroundColor Yellow

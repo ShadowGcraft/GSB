@@ -1,6 +1,11 @@
 ﻿<#
     Arrête l'application GSB lancée sans Docker, sous Windows.
 
+    Les processus sont retrouvés par leur EMPLACEMENT, dans legacy\local\bin\,
+    et non par leur port : celui-ci varie d'un lancement à l'autre quand Windows
+    réserve le port habituel. Rien d'autre que les processus de ce dossier n'est
+    arrêté : une installation PHP, WAMP, XAMPP ou MySQL du poste n'est pas touchée.
+
     Les données sont conservées dans legacy\local\mysql\data.
     Pour repartir d'une base vierge :
         .\sans-docker\demarrer-windows.ps1 -BaseNeuve
@@ -8,47 +13,68 @@
 
 #Requires -Version 5.1
 [CmdletBinding()]
-param(
-    [int]$PortWeb  = 8089,
-    [int]$PortBase = 3307
-)
+param()
 
 $ErrorActionPreference = 'Continue'
 
-$racine = Split-Path -Parent $PSScriptRoot
-$local  = Join-Path $racine 'local'
+$racine   = Split-Path -Parent $PSScriptRoot
+$local    = Join-Path $racine 'local'
+$binaires = Join-Path $local 'bin'
 
 Write-Host ''
 Write-Host '  Arrêt de l''application GSB (mode sans Docker)'
 Write-Host ''
 
-# Arrête le processus qui écoute sur un port, s'il vient de notre dossier.
-function Stopper-SurPort([int]$Port, [string]$Etiquette) {
-    $conn = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
-    if (-not $conn) {
-        Write-Host "  $Etiquette déjà arrêté"
+# Arrête les processus d'un exécutable donné, s'ils viennent de ce projet.
+function Stopper-Processus([string]$Nom, [string]$Etiquette) {
+    $tous = Get-Process -Name $Nom -ErrorAction SilentlyContinue
+    if (-not $tous) {
+        Write-Host "  $Etiquette : rien à arrêter"
         return
     }
 
-    $proc = Get-Process -Id $conn[0].OwningProcess -ErrorAction SilentlyContinue
-    if (-not $proc) { Write-Host "  $Etiquette introuvable"; return }
+    $nôtres = @($tous | Where-Object {
+        try { $_.Path -and $_.Path.StartsWith($binaires, 'OrdinalIgnoreCase') } catch { $false }
+    })
 
-    # Prudence : on ne tue que ce qui a été lancé depuis legacy\local\bin,
-    # jamais un PHP ou un MySQL installé par ailleurs sur le poste.
-    $chemin = $null
-    try { $chemin = $proc.Path } catch { }
+    if (-not $nôtres) {
+        Write-Host "  $Etiquette : $($tous.Count) processus trouvé(s), aucun de ce projet." -ForegroundColor Yellow
+        $tous | ForEach-Object {
+            $chemin = try { $_.Path } catch { '(chemin inaccessible)' }
+            Write-Host "      pid $($_.Id)  $chemin" -ForegroundColor DarkGray
+        }
+        Write-Host "      Rien n'a été arrêté." -ForegroundColor Yellow
+        return
+    }
 
-    if ($chemin -and $chemin.StartsWith((Join-Path $local 'bin'), 'OrdinalIgnoreCase')) {
-        Stop-Process -Id $proc.Id -Force
-        Write-Host "  $Etiquette arrêté"
-    } else {
-        Write-Host "  $Etiquette : le port $Port est tenu par « $($proc.ProcessName) »," -ForegroundColor Yellow
-        Write-Host "               qui ne vient pas de ce projet. Rien n'a été arrêté." -ForegroundColor Yellow
+    foreach ($p in $nôtres) {
+        try {
+            Stop-Process -Id $p.Id -Force -ErrorAction Stop
+            Write-Host "  $Etiquette arrêté (pid $($p.Id))"
+        } catch {
+            Write-Host "  $Etiquette : impossible d'arrêter le pid $($p.Id) — $($_.Exception.Message)" -ForegroundColor Yellow
+        }
     }
 }
 
-Stopper-SurPort $PortWeb  'serveur web'
-Stopper-SurPort $PortBase 'base de données'
+# Le serveur de base est arrêté en premier : il doit relâcher ses fichiers.
+Stopper-Processus 'mysqld' 'base de données'
+Stopper-Processus 'php'    'serveur web'
+
+Start-Sleep -Seconds 2
+
+# Reste-t-il quelque chose ?
+$restants = @(
+    @(Get-Process -Name 'mysqld', 'php' -ErrorAction SilentlyContinue) | Where-Object {
+        try { $_.Path -and $_.Path.StartsWith($binaires, 'OrdinalIgnoreCase') } catch { $false }
+    }
+)
+if ($restants) {
+    Write-Host ''
+    Write-Host '  Certains processus résistent :' -ForegroundColor Yellow
+    $restants | ForEach-Object { Write-Host "      pid $($_.Id)  $($_.ProcessName)" -ForegroundColor DarkGray }
+    Write-Host '  Fermez-les depuis le Gestionnaire des tâches.' -ForegroundColor Yellow
+}
 
 Write-Host ''
 Write-Host '  Les données saisies sont conservées.'

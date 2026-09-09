@@ -103,9 +103,22 @@ Supprimez `legacy/local/` : binaires, base et journaux disparaissent. Le prochai
 reconstruit tout. Pour ne réinitialiser que les données, supprimez `legacy/local/mysql/data`, ou
 utilisez `-BaseNeuve` sous Windows.
 
-## Sept particularités de Windows
+## Huit particularités de Windows
 
-Ces sept points ont été découverts en essayant sur un vrai poste, et corrigés.
+Ces huit points ont été découverts en essayant sur un vrai poste, et corrigés.
+
+**Deux serveurs ne peuvent pas partager les mêmes données.** Après un lancement interrompu, le
+serveur de base restait en mémoire. Le lancement suivant trouvait son port occupé, en choisissait un
+autre, et démarrait une seconde instance sur les mêmes fichiers. InnoDB refusait, avec un message qui
+ne dit rien du vrai problème : `The data file './ibdata1' must be writable`.
+
+Le script cherche maintenant, avant tout, un serveur issu de ce projet. S'il en trouve un, il lit son
+port dans le fichier de configuration et le réutilise au lieu d'en lancer un second. Si le démarrage
+échoue malgré tout sur ce message, il liste les serveurs en mémoire et indique comment les arrêter.
+
+Le script d'arrêt a été repris dans la foulée : il retrouvait les processus par leur port, qui varie
+d'un lancement à l'autre. Il les identifie désormais par leur emplacement, dans `legacy\local\bin\`,
+ce qui reste sans effet sur une installation MySQL ou WAMP du poste.
 
 **Composer ne pouvait écrire aucune archive.** Il téléchargeait chaque dépendance dans un fichier
 `.zip` temporaire, et Windows refusait l'écriture, pour les trente-sept paquets. Deux causes se
@@ -167,7 +180,7 @@ chargement du schéma, connexion, saisie forfaitisée, ajout d'un frais hors for
 d'une fiche clôturée, feuilles de style et logo. La bascule entre les deux modes a été testée dans
 les deux sens.
 
-Le mode Windows a été **essayé sur un vrai poste**, en quatre passes, ce qui a révélé les sept
+Le mode Windows a été **essayé sur un vrai poste**, en cinq passes, ce qui a révélé les huit
 problèmes décrits plus haut. Le téléchargement des outils, la configuration de PHP, le démarrage de
 MariaDB, le chargement du schéma et du jeu d'essai sont désormais confirmés sur Windows. Le téléchargement des outils, la configuration de PHP et le démarrage
 de MariaDB sont désormais confirmés sur Windows. Chaque correctif a été vérifié à part : contenu
