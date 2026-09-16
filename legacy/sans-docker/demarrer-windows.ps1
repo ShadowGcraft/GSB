@@ -357,13 +357,38 @@ try {
             # repartir proprement. Seuls les processus de ce dossier sont vises.
             Souci "Un serveur du projet tourne (pid $($serveur.Processus.Id)) mais ne repond pas."
             Info  'arret de cette instance pour repartir proprement'
-            try {
-                Stop-Process -Id $serveur.Processus.Id -Force -ErrorAction Stop
-                Start-Sleep -Seconds 3
-            } catch {
-                Echouer "Impossible d'arreter le serveur (pid $($serveur.Processus.Id)) : $($_.Exception.Message)
+
+            # Arret PROPRE d'abord. Tuer le processus laisse les journaux du
+            # moteur Aria dans un etat incoherent, et le serveur refuse ensuite
+            # de redemarrer avec « Aria recovery failed ».
+            $arrete = $false
+            $admin = Join-Path $mdbBin 'mysqladmin.exe'
+            if (Test-Path $admin) {
+                foreach ($mdp in @('root', '')) {
+                    $parametres = @("--host=127.0.0.1", "--protocol=tcp", "--user=root",
+                                    "--connect-timeout=5", "--plugin-dir=$mdbPlugins")
+                    if ($serveur.Port -gt 0) { $parametres += "--port=$($serveur.Port)" }
+                    if ($mdp) { $parametres += "--password=$mdp" }
+                    $parametres += 'shutdown'
+                    $ancienEA = $ErrorActionPreference
+                    $ErrorActionPreference = 'Continue'
+                    try { & $admin @parametres 2>&1 | Out-Null } finally { $ErrorActionPreference = $ancienEA }
+                    Start-Sleep -Seconds 3
+                    if ($serveur.Processus.HasExited) { $arrete = $true; Detail 'arret propre reussi'; break }
+                }
+            }
+
+            if (-not $arrete) {
+                Souci "L'arret propre a echoue, le processus va etre force."
+                Souci "Les journaux du moteur Aria peuvent en souffrir ; le script les repare si besoin."
+                try {
+                    Stop-Process -Id $serveur.Processus.Id -Force -ErrorAction Stop
+                    Start-Sleep -Seconds 3
+                } catch {
+                    Echouer "Impossible d'arreter le serveur (pid $($serveur.Processus.Id)) : $($_.Exception.Message)
            Arretez-le a la main, puis relancez :
              .\sans-docker\arreter-windows.ps1"
+                }
             }
             $serveur = Get-ServeurDuProjet
             if ($serveur) {
@@ -465,25 +490,69 @@ skip-name-resolve
             }
         }
 
+    <#
+        Repare les journaux du moteur Aria.
+
+        MariaDB stocke ses tables systeme avec le moteur Aria. Si le serveur est
+        arrete brutalement, ses journaux restent incoherents et le demarrage
+        suivant echoue sur « Aria recovery failed ». La procedure indiquee par
+        MariaDB elle-meme consiste a ecarter ces journaux : ils seront recrees.
+
+        Les fichiers sont deplaces, jamais supprimes, pour pouvoir revenir en
+        arriere. Les donnees des tables, elles, ne sont pas touchees.
+    #>
+    function Repair-JournauxAria {
+        $rebut = Join-Path $local ("mysql\aria-ecartes-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        $fichiers = @(Get-ChildItem $donnees -Filter 'aria_log*' -ErrorAction SilentlyContinue)
+        if (-not $fichiers) { return $false }
+
+        New-Item -ItemType Directory -Force -Path $rebut | Out-Null
+        foreach ($f in $fichiers) {
+            Move-Item $f.FullName (Join-Path $rebut $f.Name) -Force -ErrorAction SilentlyContinue
+            Tracer "   journal Aria ecarte : $($f.Name)"
+        }
+        Info "journaux du moteur Aria ecartes vers $rebut"
+        return $true
+    }
+
+    function Start-Serveur {
+        Start-Process -FilePath (Join-Path $mdbBin 'mysqld.exe') `
+            -ArgumentList "--defaults-file=`"$mycnf`"", "--datadir=`"$donnees`"", "--console" `
+            -WindowStyle Hidden -PassThru `
+            -RedirectStandardOutput $journalErreur `
+            -RedirectStandardError  "$journalErreur.err"
+    }
+
         Info "demarrage du serveur sur le port $PortBase"
         Detail "mysqld.exe --defaults-file=$mycnf --datadir=$donnees"
 
         # --console fait ecrire les erreurs sur la sortie standard, que l'on
         # capture : sans cela, un demarrage rate ne laisse aucune trace visible.
-        $processus = Start-Process -FilePath (Join-Path $mdbBin 'mysqld.exe') `
-            -ArgumentList "--defaults-file=`"$mycnf`"", "--datadir=`"$donnees`"", "--console" `
-            -WindowStyle Hidden -PassThru `
-            -RedirectStandardOutput $journalErreur `
-            -RedirectStandardError  "$journalErreur.err"
-
+        $processus = Start-Serveur
         Detail "processus mysqld demarre, identifiant $($processus.Id)"
 
         $enMarche = $false
+        $reparationTentee = $false
         foreach ($i in 1..20) {
             Start-Sleep -Seconds 2
 
             # Le processus a-t-il rendu l'ame ? Inutile d'attendre la fin du delai.
             if ($processus.HasExited) {
+                $sortieBrute = Get-Content "$journalErreur.err" -Raw -ErrorAction SilentlyContinue
+
+                # Journaux Aria incoherents : on les ecarte et on reessaie, une
+                # seule fois, avant de declarer forfait.
+                if (-not $reparationTentee -and $sortieBrute -match 'Aria recovery failed|Unknown storage engine ''Aria''') {
+                    $reparationTentee = $true
+                    Souci "Les journaux du moteur Aria sont incoherents, sequelle d'un arret brutal."
+                    if (Repair-JournauxAria) {
+                        Info 'nouvelle tentative de demarrage'
+                        $processus = Start-Serveur
+                        Detail "processus mysqld redemarre, identifiant $($processus.Id)"
+                        continue
+                    }
+                }
+
                 $code = if ($null -ne $processus.ExitCode) { $processus.ExitCode } else { 'inconnu' }
                 Souci "mysqld s'est arrete tout seul, code $code."
                 Montrer-Journal "$journalErreur.err" 'sortie d''erreur de mysqld'
@@ -537,7 +606,9 @@ skip-name-resolve
             Montrer-Journal $journalErreur        'sortie de mysqld'
             $err = Get-ChildItem $donnees -Filter '*.err' -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($err) { Montrer-Journal $err.FullName "journal MariaDB ($($err.Name))" }
-            Echouer "La base n'a pas repondu."
+            Souci "Si le probleme persiste, repartez d'une base vierge :"
+            Souci "  .\sans-docker\demarrer-windows.ps1 -BaseNeuve"
+            Echouer "La base n'a pas repondu." 
         }
     }
     Info "base en marche : MariaDB $version"

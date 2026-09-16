@@ -57,9 +57,59 @@ function Stopper-Processus([string]$Nom, [string]$Etiquette) {
     }
 }
 
+<#
+    Arrêt PROPRE du serveur de base.
+
+    Tuer le processus laisse les journaux du moteur Aria dans un état
+    incohérent, et le démarrage suivant échoue sur « Aria recovery failed ».
+    On demande donc d'abord un arrêt en bonne et due forme, et on ne force
+    qu'en dernier recours.
+#>
+function Stopper-BaseProprement {
+    $mariadb = Get-ChildItem (Join-Path $binaires 'mariadb') -Filter 'mysqladmin.exe' `
+                   -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $mariadb) { return $false }
+
+    $processus = @(Get-Process -Name 'mysqld' -ErrorAction SilentlyContinue | Where-Object {
+        try { $_.Path -and $_.Path.StartsWith($binaires, 'OrdinalIgnoreCase') } catch { $false }
+    })
+    if (-not $processus) { return $true }
+
+    # Le port réel se lit sur le processus : le fichier de configuration a pu
+    # être réécrit depuis son démarrage.
+    $port = 0
+    $ecoute = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+              Where-Object { $_.OwningProcess -eq $processus[0].Id } | Select-Object -First 1
+    if ($ecoute) { $port = $ecoute.LocalPort }
+
+    $plugins = Join-Path (Split-Path -Parent $mariadb.DirectoryName) 'lib\plugin'
+    foreach ($mdp in @('root', '')) {
+        $parametres = @('--host=127.0.0.1', '--protocol=tcp', '--user=root', '--connect-timeout=5')
+        if (Test-Path $plugins) { $parametres += "--plugin-dir=$plugins" }
+        if ($port -gt 0) { $parametres += "--port=$port" }
+        if ($mdp) { $parametres += "--password=$mdp" }
+        $parametres += 'shutdown'
+
+        & $mariadb.FullName @parametres 2>&1 | Out-Null
+        Start-Sleep -Seconds 3
+
+        $restant = @(Get-Process -Name 'mysqld' -ErrorAction SilentlyContinue | Where-Object {
+            try { $_.Path -and $_.Path.StartsWith($binaires, 'OrdinalIgnoreCase') } catch { $false }
+        })
+        if (-not $restant) {
+            Write-Host '  base de données arrêtée proprement'
+            return $true
+        }
+    }
+    return $false
+}
+
 # Le serveur de base est arrêté en premier : il doit relâcher ses fichiers.
-Stopper-Processus 'mysqld' 'base de données'
-Stopper-Processus 'php'    'serveur web'
+if (-not (Stopper-BaseProprement)) {
+    Write-Host '  arrêt propre impossible, le processus va être forcé' -ForegroundColor Yellow
+    Stopper-Processus 'mysqld' 'base de données'
+}
+Stopper-Processus 'php' 'serveur web'
 
 Start-Sleep -Seconds 2
 

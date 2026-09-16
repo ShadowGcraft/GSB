@@ -103,9 +103,21 @@ Supprimez `legacy/local/` : binaires, base et journaux disparaissent. Le prochai
 reconstruit tout. Pour ne réinitialiser que les données, supprimez `legacy/local/mysql/data`, ou
 utilisez `-BaseNeuve` sous Windows.
 
-## Neuf particularités de Windows
+## Dix particularités de Windows
 
-Ces neuf points ont été découverts en essayant sur un vrai poste, et corrigés.
+Ces dix points ont été découverts en essayant sur un vrai poste, et corrigés.
+
+**Un serveur tué salit ses journaux.** Pour repartir proprement, le script arrêtait le serveur de
+base en tuant son processus. MariaDB range ses tables système avec le moteur Aria, dont les journaux
+restent alors incohérents : le démarrage suivant échoue sur `Aria recovery failed`, et plus rien ne
+fonctionne.
+
+L'arrêt passe maintenant par une demande en bonne et due forme, et ne force qu'en dernier recours.
+Le script d'arrêt fait de même. Et si les journaux sont malgré tout abîmés, le script les écarte
+automatiquement, dans un dossier daté plutôt qu'à la corbeille, puis retente le démarrage. Les
+données des tables ne sont pas touchées ; seuls les journaux, que MariaDB recrée, sont mis de côté.
+
+C'est la procédure que MariaDB indique elle-même dans son message d'erreur.
 
 **Un dossier vide passait pour une installation réussie.** Le script décidait d'installer les
 dépendances selon la seule présence du dossier `vendor`. Or son propre test d'écriture d'archive
@@ -209,8 +221,9 @@ chargement du schéma, connexion, saisie forfaitisée, ajout d'un frais hors for
 d'une fiche clôturée, feuilles de style et logo. La bascule entre les deux modes a été testée dans
 les deux sens.
 
-Le mode Windows a été **essayé sur un vrai poste**, en six passes, ce qui a révélé les neuf
-problèmes décrits plus haut. Toutes les étapes jusqu'au démarrage du serveur web sont désormais
+Le mode Windows a été **essayé sur un vrai poste**, en huit passes, ce qui a révélé les dix
+problèmes décrits plus haut. L'installation des dépendances, longtemps bloquée, aboutit désormais :
+les trente-sept paquets s'installent en deux minutes. Toutes les étapes jusqu'au démarrage du serveur web sont désormais
 confirmées sur Windows. Le téléchargement des outils, la configuration de PHP, le démarrage de
 MariaDB, le chargement du schéma et du jeu d'essai sont désormais confirmés sur Windows. Le téléchargement des outils, la configuration de PHP et le démarrage
 de MariaDB sont désormais confirmés sur Windows. Chaque correctif a été vérifié à part : contenu
