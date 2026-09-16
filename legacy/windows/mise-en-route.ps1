@@ -151,8 +151,13 @@ composer install --no-interaction --no-scripts
     # Le mode sans Docker fait pointer la connexion vers 127.0.0.1 : on la remet
     # sur le service « db » du compose, pour que les deux modes cohabitent.
     $services = 'app\src\Pg\GsbFraisBundle\Resources\config\services.yml'
-    $contenu  = (Get-Content $services -Raw) -replace 'db\.host: mysql:host=[^\r\n]*', 'db.host: mysql:host=db'
-    Set-Content -Path $services -Value ($contenu -replace "`r`n", "`n") -Encoding UTF8 -NoNewline
+    $contenu  = (Get-Content $services -Raw -Encoding UTF8).TrimStart([char]0xFEFF)
+    $contenu  = $contenu -replace 'db\.host: mysql:host=[^\r\n]*', 'db.host: mysql:host=db'
+    # UTF-8 SANS BOM : Set-Content -Encoding UTF8 en ajoute un, que Symfony
+    # lit comme un caractere du fichier, et l'application repond par une 500.
+    # .NET ignore Push-Location, d'ou le chemin absolu.
+    [System.IO.File]::WriteAllText((Join-Path $racine $services), ($contenu -replace "`r`n", "`n"),
+                                   (New-Object System.Text.UTF8Encoding $false))
 
     Invoke-DansConteneur @'
 cd /var/www/html

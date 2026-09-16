@@ -103,9 +103,22 @@ Supprimez `legacy/local/` : binaires, base et journaux disparaissent. Le prochai
 reconstruit tout. Pour ne réinitialiser que les données, supprimez `legacy/local/mysql/data`, ou
 utilisez `-BaseNeuve` sous Windows.
 
-## Dix particularités de Windows
+## Douze particularités de Windows
 
-Ces dix points ont été découverts en essayant sur un vrai poste, et corrigés.
+Ces douze points ont été découverts en essayant sur un vrai poste, et corrigés.
+
+**Un BOM invisible cassait toutes les pages.** Le script écrit `parameters.yml` et `services.yml`.
+`Set-Content -Encoding UTF8` de PowerShell 5.1 place en tête de fichier une marque d'ordre
+d'octets, que Symfony lit comme un caractère ordinaire : la première ligne devient une clé inconnue,
+et chaque page répond par une erreur 500,
+`There is no extension able to load the configuration for "# Genere par ..."`. Ces fichiers sont
+maintenant écrits en UTF-8 sans marque, et celle qu'une version précédente avait laissée dans
+`services.yml` est retirée. Le script Docker de `legacy/windows/` avait le même défaut, corrigé aussi.
+
+**Le proxy de la salle était écrit en dur.** Le lanceur `.bat` imposait `172.16.63.130:3128` à
+Composer, qui ne lit que `HTTP_PROXY` et `HTTPS_PROXY`. Hors du lycée, ce proxy est injoignable et
+l'installation des dépendances échouait. Le script recopie maintenant le proxy que Windows utilise
+lui-même, s'il y en a un : le même lanceur fonctionne en salle et à la maison.
 
 **Un serveur tué salit ses journaux.** Pour repartir proprement, le script arrêtait le serveur de
 base en tuant son processus. MariaDB range ses tables système avec le moteur Aria, dont les journaux
@@ -161,6 +174,9 @@ Le script d'arrêt a été repris dans la foulée : il retrouvait les processus 
 d'un lancement à l'autre. Il les identifie désormais par leur emplacement, dans `legacy\local\bin\`,
 ce qui reste sans effet sur une installation MySQL ou WAMP du poste.
 
+Le serveur web suit la même règle. Celui d'un lancement précédent est arrêté avant d'en démarrer un
+nouveau, qui retrouve ainsi le port 8089, celui que le lanceur `.bat` ouvre dans le navigateur.
+
 **Composer ne pouvait écrire aucune archive.** Il téléchargeait chaque dépendance dans un fichier
 `.zip` temporaire, et Windows refusait l'écriture, pour les trente-sept paquets. Deux causes se
 combinent souvent : le dossier `Documents` est synchronisé par OneDrive, qui verrouille les fichiers,
@@ -170,10 +186,17 @@ Le script teste maintenant l'écriture d'une archive avant de lancer Composer. S
 bascule sur un dossier local hors de `Documents`, y installe les dépendances, puis les rapatrie dans
 le projet. Si même ce dossier refuse, il le dit et pointe l'antivirus.
 
-**Une extension déclarée de travers.** `opcache` n'est pas une extension ordinaire mais une extension
-Zend : elle se déclare avec `zend_extension`. Écrite comme les autres, elle provoquait un
-avertissement à chaque appel de PHP, et donc l'arrêt du script. Elle est retirée : elle n'apporte
-rien à un serveur de démonstration.
+**OPcache est indispensable au mode développement.** Sous PHP 7.4, la compilation de
+`Doctrine\ORM\UnitOfWork` émet l'avertissement `"continue" targeting switch is equivalent to "break"`.
+Le profiler de `app_dev.php` charge cette classe à chaque page, et le gestionnaire d'erreurs du mode
+debug change l'avertissement en exception : toutes les pages répondaient 500. OPcache compile les
+fichiers sans passer par ce gestionnaire. Docker et Homebrew l'activent d'office, ce qui explique
+que le problème n'existe que sous Windows.
+
+`opcache` n'est pas une extension ordinaire mais une extension Zend : elle se déclare avec
+`zend_extension`. Une première version l'écrivait comme les autres, d'où un avertissement à chaque
+appel de PHP. Elle est désormais déclarée correctement, active pour le serveur web seulement, et
+relit les fichiers modifiés à chaque requête.
 
 **Windows réserve des plages entières de ports.** C'est la plus déroutante. MariaDB refusait de
 démarrer avec l'erreur 10013 et le message « Do you already have another server running on port
@@ -221,15 +244,18 @@ chargement du schéma, connexion, saisie forfaitisée, ajout d'un frais hors for
 d'une fiche clôturée, feuilles de style et logo. La bascule entre les deux modes a été testée dans
 les deux sens.
 
-Le mode Windows a été **essayé sur un vrai poste**, en huit passes, ce qui a révélé les dix
-problèmes décrits plus haut. L'installation des dépendances, longtemps bloquée, aboutit désormais :
-les trente-sept paquets s'installent en deux minutes. Toutes les étapes jusqu'au démarrage du serveur web sont désormais
-confirmées sur Windows. Le téléchargement des outils, la configuration de PHP, le démarrage de
-MariaDB, le chargement du schéma et du jeu d'essai sont désormais confirmés sur Windows. Le téléchargement des outils, la configuration de PHP et le démarrage
-de MariaDB sont désormais confirmés sur Windows. Chaque correctif a été vérifié à part : contenu
-réel des archives PHP et MariaDB, fonctionnement de Composer avec un extracteur externe, lecture
-des accents, filtrage des avertissements, comportement du client MariaDB. La **fin du parcours
-reste à confirmer** : chargement du schéma, installation des dépendances, démarrage du serveur web.
+Le mode Windows a été **exécuté de bout en bout sur un vrai poste**, Windows 11 et PowerShell 5.1,
+derrière le proxy de la salle. Les passes successives ont révélé les douze problèmes décrits plus
+haut. Le dernier essai part d'un dépôt sans `legacy/local/` ni `vendor`, par double-clic simulé sur
+`Lancer-GSB-sans-Docker-windows.bat`, et aboutit en cinq minutes : téléchargement des outils,
+démarrage de MariaDB, chargement du schéma et du jeu d'essai, installation des trente-sept paquets,
+serveur web. Ont ensuite été vérifiés, en mode développement : la page de connexion, le refus d'un
+mauvais mot de passe, la connexion de `dandre`, la liste des mois, la page de saisie, la
+déconnexion, la feuille de style et le logo. Un second lancement réutilise la base en marche, et le
+script d'arrêt arrête MariaDB proprement sans toucher au MySQL de XAMPP présent sur le poste.
+
+Restent **à confirmer** : le lancement à la maison, sans proxy, dont seule la détection a été
+testée, et l'enregistrement d'un frais depuis le navigateur sous Windows.
 
 Deux points méritent encore l'attention : les liens symboliques n'existant pas de la même façon,
 `assets:install` copie les fichiers au lieu de les lier, et le script duplique ensuite le dossier

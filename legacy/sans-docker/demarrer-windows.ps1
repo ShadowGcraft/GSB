@@ -48,7 +48,11 @@ $script:Journal = $null
 function Tracer($t) {
     if ($script:Journal) {
         $horodatage = (Get-Date).ToString('HH:mm:ss')
-        Add-Content -Path $script:Journal -Value "$horodatage  $t" -Encoding UTF8
+        # Un antivirus ou un editeur qui lit le journal le verrouille un instant.
+        # Une ligne de journal perdue ne doit jamais faire echouer l'installation.
+        try {
+            Add-Content -Path $script:Journal -Value "$horodatage  $t" -Encoding UTF8 -ErrorAction Stop
+        } catch { }
     }
 }
 function Titre($t) { Write-Host ''; Write-Host "==> $t" -ForegroundColor Cyan;   Tracer "== $t" }
@@ -84,6 +88,20 @@ function Montrer-Journal($chemin, $titre, $lignes = 25) {
 # commandes envoyées à des outils Unix ne supportent pas les CRLF.
 function Sans-CR([string]$s) { return ($s -replace "`r`n", "`n" -replace "`r", "`n") }
 
+<#
+    Ecrit un fichier texte en UTF-8 SANS BOM.
+
+    Set-Content -Encoding UTF8 de PowerShell 5.1 place un BOM en tete du
+    fichier. Symfony le lit comme un caractere ordinaire : la premiere ligne
+    d'un YAML devient une cle inconnue, et toute page repond par une erreur
+    500 « There is no extension able to load the configuration ».
+#>
+function Ecrire-SansBom([string]$Chemin, [string]$Texte) {
+    # .NET ignore Push-Location : on lui passe un chemin absolu.
+    $absolu = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Chemin)
+    [System.IO.File]::WriteAllText($absolu, $Texte, (New-Object System.Text.UTF8Encoding $false))
+}
+
 $racine = Split-Path -Parent $PSScriptRoot          # -> legacy
 Push-Location $racine
 try {
@@ -96,6 +114,20 @@ try {
         Set-Content -Path $script:Journal -Encoding UTF8
     Tracer "PowerShell $($PSVersionTable.PSVersion)  |  port web $PortWeb  |  port base $PortBase"
     Write-Host "    journal : $script:Journal" -ForegroundColor DarkGray
+
+    # Proxy. Les telechargements de PowerShell suivent les reglages de Windows,
+    # mais Composer ne lit que HTTP_PROXY et HTTPS_PROXY. On lui recopie le
+    # proxy de Windows s'il y en a un : le meme lanceur fonctionne ainsi en
+    # salle, derriere le proxy, et a la maison, ou ce proxy est injoignable.
+    if (-not $env:HTTPS_PROXY) {
+        $depot = [Uri]'https://repo.packagist.org'
+        $proxy = [System.Net.WebRequest]::GetSystemWebProxy().GetProxy($depot)
+        if ($proxy -and $proxy.Authority -ne $depot.Authority) {
+            $env:HTTP_PROXY  = "http://$($proxy.Authority)"
+            $env:HTTPS_PROXY = $env:HTTP_PROXY
+        }
+    }
+    Tracer "proxy : $(if ($env:HTTPS_PROXY) { $env:HTTPS_PROXY } else { 'aucun' })"
 
     # ------------------------------------------------------------------ 1
 
@@ -147,10 +179,9 @@ try {
     # n'active que les extensions reellement presentes dans ext\ : la liste
     # varie d'une version de PHP a l'autre, et activer une DLL absente fait
     # echouer PHP au demarrage.
-    # opcache est volontairement absente : c'est une extension Zend, qui se
-    # declare avec « zend_extension » et non « extension ». Elle n'apporte rien
-    # a un serveur de demonstration, et sa mauvaise declaration provoquait un
-    # avertissement a chaque appel de PHP.
+    # opcache n'est pas dans cette liste : c'est une extension Zend, declaree
+    # plus bas avec « zend_extension ». Declaree avec « extension », elle
+    # provoquait un avertissement a chaque appel de PHP.
     $souhaitees = @('pdo_mysql','mysqli','mbstring','openssl','intl','curl','fileinfo','sodium')
     $activees = @()
     foreach ($ext in $souhaitees) {
@@ -164,6 +195,18 @@ try {
     )
     $lignes += ($activees | ForEach-Object { "extension=$_" })
     $lignes += @('date.timezone = Europe/Paris', 'memory_limit = 512M')
+
+    # OPcache est INDISPENSABLE au mode developpement. Sous PHP 7.4, compiler
+    # Doctrine\ORM\UnitOfWork emet l'avertissement « continue targeting
+    # switch », que le gestionnaire d'erreurs de app_dev.php change en
+    # exception : chaque page repondait 500. OPcache compile les fichiers sans
+    # passer par ce gestionnaire. Docker et Homebrew l'activent deja, d'ou un
+    # probleme propre a Windows. Il reste coupe pour la ligne de commande, et
+    # relit les fichiers modifies a chaque requete.
+    if (Test-Path (Join-Path $dossierExt 'php_opcache.dll')) {
+        $lignes += @('zend_extension=opcache', 'opcache.enable = 1',
+                     'opcache.enable_cli = 0', 'opcache.revalidate_freq = 0')
+    }
     $lignes -join "`r`n" | Set-Content -Path $php_ini -Encoding ASCII
     Info "php.ini ecrit, $($activees.Count) extensions activees : $($activees -join ', ')" 
 
@@ -808,7 +851,7 @@ FLUSH PRIVILEGES;
         Info 'paquets deja installes'
     }
 
-    @"
+    Ecrire-SansBom 'app\app\config\parameters.yml' ((@"
 # Genere par sans-docker\demarrer-windows.ps1 : instance MariaDB locale.
 parameters:
     database_host:     127.0.0.1
@@ -821,13 +864,14 @@ parameters:
     mailer_user:       ~
     mailer_password:   ~
     secret:            GsbDeuxMilleTreizeSansDocker
-"@ -replace "`r`n", "`n" | Set-Content -Path 'app\app\config\parameters.yml' -Encoding UTF8 -NoNewline
+"@) -replace "`r`n", "`n")
 
     # La connexion pointe vers l'instance locale, pas vers le service Docker.
+    # Un BOM laisse par une version precedente du script est retire au passage.
     $services = 'app\src\Pg\GsbFraisBundle\Resources\config\services.yml'
-    $contenu  = Get-Content $services -Raw
+    $contenu  = (Get-Content $services -Raw -Encoding UTF8).TrimStart([char]0xFEFF)
     $contenu  = $contenu -replace 'db\.host: mysql:host=[^\r\n]*', "db.host: mysql:host=127.0.0.1;port=$PortBase"
-    Set-Content -Path $services -Value ($contenu -replace "`r`n", "`n") -Encoding UTF8 -NoNewline
+    Ecrire-SansBom $services ($contenu -replace "`r`n", "`n")
     Info "connexion dirigée vers 127.0.0.1:$PortBase"
 
     Push-Location 'app'
@@ -881,6 +925,18 @@ parameters:
     # ------------------------------------------------------------------ 6
 
     Titre '6/6  Serveur web'
+
+    # Un serveur web laisse par un lancement precedent garde le port : le
+    # nouveau partirait sur un port de secours, que le lanceur .bat n'ouvre pas
+    # dans le navigateur. On l'arrete, lui seul : il vient de legacy\local\bin.
+    $anciensWeb = @(Get-Process -Name 'php' -ErrorAction SilentlyContinue | Where-Object {
+        try { $_.Path -and $_.Path.StartsWith($binaires, 'OrdinalIgnoreCase') } catch { $false }
+    })
+    foreach ($p in $anciensWeb) {
+        Detail "arret du serveur web precedent, pid $($p.Id)"
+        Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+    }
+    if ($anciensWeb) { Start-Sleep -Seconds 1 }
 
     # Meme precaution que pour la base : un port peut etre reserve par Windows
     # sans que rien ne l'ecoute.
