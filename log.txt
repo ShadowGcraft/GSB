@@ -1,0 +1,77 @@
+
+  +------------------------------------------------+
+  |   GSB - application de 2013, sans Docker       |
+  +------------------------------------------------+
+
+  Premiere execution : telechargement de PHP et MariaDB,
+  comptez une dizaine de minutes selon le reseau.
+
+    journal : C:\Users\Gobeul le Squelette\Documents\GitHub\GSB\legacy\local\log\demarrage.log
+
+==> 1/6  Outils portables
+    php déjà présent
+    mariadb déjà présent
+
+==> 2/6  Configuration de PHP
+    php.ini ecrit, 8 extensions activees : pdo_mysql, mysqli, mbstring, openssl, intl, curl, fileinfo, sodium
+    PHP 7.4.33
+    extensions indispensables chargees
+    7-Zip disponible pour Composer
+
+==> 3/6  Base de données
+    Le port 3307 est inutilisable sur ce poste.
+    port de remplacement retenu : 3309
+    configuration ecrite, port 3309
+    demarrage du serveur sur le port 3309
+    mysqld s'est arrete tout seul, code inconnu.
+
+    --- sortie d'erreur de mysqld ---
+    2026-09-16 16:28:32 0 [Note] Starting MariaDB 10.6.21-MariaDB source revision 066e8d6aeabc13242193780341e0f845528105de server_uid djpDHy7HkSZyC0Xgml2WLFEtUxI= as process 13260
+    2026-09-16 16:28:32 0 [ERROR] InnoDB: The data file './ibdata1' must be writable
+    2026-09-16 16:28:32 0 [ERROR] InnoDB: The data file './ibdata1' must be writable
+    2026-09-16 16:28:32 0 [ERROR] Plugin 'InnoDB' registration as a STORAGE ENGINE failed.
+    2026-09-16 16:28:32 0 [Note] Plugin 'FEEDBACK' is disabled.
+    2026-09-16 16:28:32 0 [ERROR] Unknown/unsupported storage engine: InnoDB
+    2026-09-16 16:28:32 0 [ERROR] Aborting
+    --- fin ---
+    (sortie de mysqld : vide)
+
+    --- journal MariaDB (LAPTOP-MALICE.err) ---
+    2026-09-16 13:55:47 0 [Note] Starting MariaDB 10.6.21-MariaDB source revision 066e8d6aeabc13242193780341e0f845528105de server_uid S5jAOSeJl+DWl4+ktn6+Br89fLI= as process 21200
+    2026-09-16 13:55:47 0 [Note] InnoDB: The first data file './ibdata1' did not exist. A new tablespace will be created!
+    2026-09-16 13:55:47 0 [Note] InnoDB: Compressed tables use zlib 1.3.1
+    2026-09-16 13:55:47 0 [Note] InnoDB: Using transactional memory
+    2026-09-16 13:55:47 0 [Note] InnoDB: Number of pools: 1
+    2026-09-16 13:55:47 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+    2026-09-16 13:55:47 0 [Note] InnoDB: Initializing buffer pool, total size = 20971520, chunk size = 20971520
+    2026-09-16 13:55:47 0 [Note] InnoDB: Completed initialization of buffer pool
+    2026-09-16 13:55:47 0 [Note] InnoDB: Setting log file ./ib_logfile101 size to 100663296 bytes
+    2026-09-16 13:55:47 0 [Note] InnoDB: Setting file './ibdata1' size to 12 MB. Physically writing the file full; Please wait ...
+    2026-09-16 13:55:47 0 [Note] InnoDB: File './ibdata1' size is now 12 MB.
+    2026-09-16 13:55:47 0 [Note] InnoDB: Renaming log file ./ib_logfile101 to ./ib_logfile0
+    2026-09-16 13:55:47 0 [Note] InnoDB: New log file created, LSN=10301
+    2026-09-16 13:55:47 0 [Note] InnoDB: Doublewrite buffer not found: creating new
+    2026-09-16 13:55:47 0 [Note] InnoDB: Doublewrite buffer created
+    2026-09-16 13:55:47 0 [Note] InnoDB: 128 rollback segments are active.
+    2026-09-16 13:55:47 0 [Note] InnoDB: Creating shared tablespace for temporary tables
+    2026-09-16 13:55:47 0 [Note] InnoDB: Setting file './ibtmp1' size to 12 MB. Physically writing the file full; Please wait ...
+    2026-09-16 13:55:47 0 [Note] InnoDB: File './ibtmp1' size is now 12 MB.
+    2026-09-16 13:55:47 0 [Note] InnoDB: 10.6.21 started; log sequence number 0; transaction id 3
+    2026-09-16 13:55:47 0 [Note] Plugin 'FEEDBACK' is disabled.
+    --- fin ---
+
+    Les fichiers de donnees sont deja utilises par un autre serveur.
+    Un serveur MariaDB de ce projet tourne encore, sans doute
+    lance par une execution precedente. Arretez-le :
+      .\sans-docker\arreter-windows.ps1
+    puis relancez ce script.
+    Processus mysqld actuellement en memoire :
+      pid 18800  c:\xampp\mysql\bin\mysqld.exe
+      pid 18892
+    Le serveur de base de donnees n'a pas pu demarrer.
+
+    Journal complet : C:\Users\Gobeul le Squelette\Documents\GitHub\GSB\legacy\local\log\demarrage.log
+
+  ECHEC : les messages ci-dessus indiquent a quelle etape.
+
+Appuyez sur une touche pour continuer...

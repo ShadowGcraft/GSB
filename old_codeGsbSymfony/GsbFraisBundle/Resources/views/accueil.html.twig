@@ -1,0 +1,36 @@
+{% extends "PgGsbFraisBundle::layout.html.twig" %}
+{% block menu %}
+<div id="menuGauche">
+     <div id="infosUtil">
+         <h3>
+            {%if(app.session.get('nom') is defined )%}
+                           Visiteur: bonjour {{app.session.get('nom')}}<br>   
+            {%endif%}
+        </h3>
+     </div>  
+        <ul id="menuList">
+	   <li class="smenu">
+              <a href="{{path('pg_gsb_frais_saisirfrais')}}" title="Saisie fiche de frais ">Saisie fiche de frais</a>
+           </li>
+           <li class="smenu">
+              <a href="{{path('pg_gsb_frais_listefrais')}}" title="Consultation de mes fiches de frais">Mes fiches de frais</a>
+           </li>	
+           <li class="smenu">
+              <a href="{{path('pg_gsb_frais_deconnexion')}}" title="Se déconnecter">Déconnexion</a>
+           </li>
+           <li class="smenu">
+              <a href="index.php?uc=validerFrais&action=voirFrais" title="valider les frais">Valider les frais</a>
+           </li>
+         </ul>
+     </div> 
+{% endblock%}
+
+
+{#
+ <li class="smenu">
+              <a href="{{path('pg_gsb_frais_saisirfrais')}}" title="Saisie fiche de frais ">Saisie fiche de frais</a>
+           </li>
+           <li class="smenu">
+              <a href="{{path('pg_gsb_frais_listefrais')}}" title="Consultation de mes fiches de frais">Mes fiches de frais</a>
+           </li>
+#}
