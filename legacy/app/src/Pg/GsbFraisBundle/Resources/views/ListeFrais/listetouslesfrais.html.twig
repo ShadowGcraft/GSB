@@ -1,7 +1,13 @@
-{% include 'PgGsbFraisBundle:ListeFrais:listemois.html.twig' with {'lesmois':lesmois,'lemois':lemois} %}
+{% extends "PgGsbFraisBundle::accueil.html.twig" %}
+{% block body %}
+{% block bloc1 %}
+<div id="contenu" class="contenu--large">
+  {% include 'PgGsbFraisBundle:ListeFrais:_cartes.html.twig' %}
 
-{% include 'PgGsbFraisBundle:ListeFrais:listefraisforfait.html.twig' with {'lesfraisforfait':lesfraisforfait,'numannee':numannee,
-'nummois':nummois,'libetat':libetat,'montantvalide':montantvalide,'datemodif':datemodif} %}
-
-{% include 'PgGsbFraisBundle:ListeFrais:listefraishorsforfait.html.twig' with {'lesfraishorsforfait':lesfraishorsforfait,
-'nbjustificatifs':nbjustificatifs} %}
+  <section class="gsb-detail" aria-label="Détail de la fiche">
+    {% include 'PgGsbFraisBundle:ListeFrais:listefraisforfait.html.twig' %}
+    {% include 'PgGsbFraisBundle:ListeFrais:listefraishorsforfait.html.twig' %}
+  </section>
+</div>
+{% endblock %}
+{% endblock %}

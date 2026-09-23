@@ -273,6 +273,24 @@ class PdoGsb{
                 $stmt->execute();
         }
 /**
+ * Retourne les dernieres fiches d'un visiteur, avec leur etat, du mois le plus
+ * recent au plus ancien. Ajout 2026 pour l'ecran en cartes de la maquette.
+
+ * @param $idVisiteur
+ * @param $nombre nombre de fiches a retourner
+ * @return un tableau associatif : mois (aaaamm), idEtat, libEtat
+*/
+        public function getLesDernieresFiches($idVisiteur, $nombre = 6){
+                $req = "select fichefrais.mois as mois, fichefrais.idEtat as idEtat, etat.libelle as libEtat
+                        from fichefrais inner join etat on fichefrais.idEtat = etat.id
+                        where fichefrais.idvisiteur = :idVisiteur
+                        order by fichefrais.mois desc limit " . (int) $nombre;
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':idVisiteur', $idVisiteur);
+                $stmt->execute();
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+/**
  * Retourne les mois pour lesquel un visiteur a une fiche de frais
  
  * @param $idVisiteur 

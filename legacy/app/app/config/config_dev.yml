@@ -8,7 +8,8 @@ framework:
     profiler: { only_exceptions: false }
 
 web_profiler:
-    toolbar: true
+    # Masquée : elle recouvrait le bas des pages. Le profileur reste sur /_profiler.
+    toolbar: false
     intercept_redirects: false
 
 monolog:

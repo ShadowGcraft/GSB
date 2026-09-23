@@ -1,0 +1,54 @@
+{# Cartes des six dernières fiches, d'après la maquette « Croquis ».
+   Fiche en cours de saisie (CR) : carte mise en avant, crayon, lien vers la saisie.
+   Autres états : cadenas, consultation seule. Le badge donne l'état réel. #}
+{% set nomsMois = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'] %}
+<div class="gsb-heading">
+  <div>
+    <h2>Mes fiches de frais</h2>
+    <p>{{ app.session.get('prenom') }} {{ app.session.get('nom') }} · {{ lesfiches|length }} dernier{{ lesfiches|length > 1 ? 's' }} mois</p>
+  </div>
+  <ul class="gsb-legend" aria-label="Légende">
+    <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Modifiable</span></li>
+    <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><path d="M12 15v2"/></svg><span>Clôturée</span></li>
+  </ul>
+</div>
+
+{% if lesfiches is empty %}
+  <p class="gsb-empty">Aucune fiche de frais pour le moment. La fiche du mois en cours sera créée à votre première saisie.</p>
+{% else %}
+<ul class="gsb-fiches">
+  {% for fiche in lesfiches %}
+    {% set ouverte = fiche.idEtat == 'CR' %}
+    {% set libelle = nomsMois[(fiche.mois|slice(4,2)) - 1]|capitalize ~ ' ' ~ fiche.mois|slice(0,4) %}
+    {% set badge = { 'CR': 'En cours', 'CL': 'Clôturée', 'VA': 'Validée', 'RB': 'Remboursée' }[fiche.idEtat]|default(fiche.libEtat) %}
+    {% set choisie = lemois is defined and lemois == fiche.mois %}
+    <li>
+      {% if ouverte %}
+        <a class="fiche fiche--ouverte" href="{{ path('pg_gsb_frais_saisirfrais') }}"
+           aria-label="{{ libelle }} : fiche en cours, modifier">
+      {% else %}
+        <form method="post" action="{{ path('pg_gsb_frais_listefrais') }}" class="fiche__form">
+          <input type="hidden" name="lstMois" value="{{ fiche.mois }}" />
+          <button type="submit" class="fiche{{ choisie ? ' fiche--choisie' }}"
+                  aria-label="{{ libelle }} : fiche {{ badge|lower }}, consulter"{% if choisie %} aria-current="true"{% endif %}>
+      {% endif %}
+          <span class="fiche__top">
+            <span class="fiche__badge">{{ badge }}</span>
+            {% if ouverte %}
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            {% else %}
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><path d="M12 15v2"/></svg>
+            {% endif %}
+          </span>
+          <span class="fiche__mois">{{ libelle }}</span>
+          <span class="fiche__action">{{ ouverte ? 'Modifier la saisie →' : (choisie ? 'Détail affiché ci-dessous' : 'Voir le détail →') }}</span>
+      {% if ouverte %}
+        </a>
+      {% else %}
+          </button>
+        </form>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>
+{% endif %}

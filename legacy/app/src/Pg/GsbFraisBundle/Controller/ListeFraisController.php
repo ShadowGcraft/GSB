@@ -14,14 +14,15 @@ class ListeFraisController extends Controller
        // $pdo = PdoGsb::getPdoGsb();
         $pdo = $this->get('pg_gsb_frais.pdo');
         $lesMois=$pdo->getLesMoisDisponibles($idVisiteur);
+        $lesFiches = $pdo->getLesDernieresFiches($idVisiteur, 6);
         if($this->get('request')->getMethod() == 'GET'){
                 // Afin de sélectionner par défaut le dernier mois dans la zone de liste
                 // on demande toutes les clés, et on prend la première,
                 // les mois étant triés décroissants
             $lesCles = array_keys( $lesMois );
-            $moisASelectionner = $lesCles[0];
+            $moisASelectionner = $lesCles ? $lesCles[0] : null;
             return $this->render('PgGsbFraisBundle:ListeFrais:listemois.html.twig',
-                array('lesmois'=>$lesMois,'lemois'=>$moisASelectionner));
+                array('lesmois'=>$lesMois,'lemois'=>$moisASelectionner,'lesfiches'=>$lesFiches));
         }
         else{
             $request = $this->get('request');
@@ -37,7 +38,7 @@ class ListeFraisController extends Controller
             $dateModif =  $lesInfosFicheFrais['dateModif'];
             $dateModif =  dateAnglaisVersFrancais($dateModif);
             return $this->render('PgGsbFraisBundle:ListeFrais:listetouslesfrais.html.twig',
-                array('lesmois'=>$lesMois,'lesfraisforfait'=>$lesFraisForfait,'lesfraishorsforfait'=>$lesFraisHorsForfait,
+                array('lesmois'=>$lesMois,'lesfiches'=>$lesFiches,'lesfraisforfait'=>$lesFraisForfait,'lesfraishorsforfait'=>$lesFraisHorsForfait,
                     'lemois'=>$leMois,'numannee'=>$numAnnee,'nummois'=> $numMois,'libetat'=>$libEtat,
                         'montantvalide'=>$montantValide,'nbjustificatifs'=>$nbJustificatifs,'datemodif'=>$dateModif));
             

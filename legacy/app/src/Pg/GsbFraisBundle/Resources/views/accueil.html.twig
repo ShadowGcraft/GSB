@@ -1,36 +1,25 @@
 {% extends "PgGsbFraisBundle::layout.html.twig" %}
 {% block menu %}
-<div id="menuGauche">
-     <div id="infosUtil">
-         <h3>
-            {%if(app.session.get('nom') is defined )%}
-                           Visiteur: bonjour {{app.session.get('nom')}}<br>   
-            {%endif%}
-        </h3>
-     </div>  
-        <ul id="menuList">
-	   <li class="smenu">
-              <a href="{{path('pg_gsb_frais_saisirfrais')}}" title="Saisie fiche de frais ">Saisie fiche de frais</a>
-           </li>
-           <li class="smenu">
-              <a href="{{path('pg_gsb_frais_listefrais')}}" title="Consultation de mes fiches de frais">Mes fiches de frais</a>
-           </li>	
-           <li class="smenu">
-              <a href="{{path('pg_gsb_frais_deconnexion')}}" title="Se déconnecter">Déconnexion</a>
-           </li>
-           <li class="smenu">
-              <a href="index.php?uc=validerFrais&action=voirFrais" title="valider les frais">Valider les frais</a>
-           </li>
-         </ul>
-     </div> 
-{% endblock%}
-
-
-{#
- <li class="smenu">
-              <a href="{{path('pg_gsb_frais_saisirfrais')}}" title="Saisie fiche de frais ">Saisie fiche de frais</a>
-           </li>
-           <li class="smenu">
-              <a href="{{path('pg_gsb_frais_listefrais')}}" title="Consultation de mes fiches de frais">Mes fiches de frais</a>
-           </li>
-#}
+{% set route = app.request.attributes.get('_route') %}
+<nav id="menuGauche" aria-label="Navigation principale">
+  <div id="infosUtil">
+    {% if app.session.get('nom') %}
+      <span class="infosUtil__role">Visiteur</span>
+      <span class="infosUtil__nom">Bonjour {{ app.session.get('prenom') }} {{ app.session.get('nom') }}</span>
+    {% endif %}
+  </div>
+  <ul id="menuList">
+    <li class="smenu">
+      <a href="{{ path('pg_gsb_frais_saisirfrais') }}"{% if route starts with 'pg_gsb_frais_saisir' or route starts with 'pg_gsb_frais_valider' or route starts with 'pg_gsb_frais_supprimer' %} aria-current="page"{% endif %}>Saisie fiche de frais</a>
+    </li>
+    <li class="smenu">
+      <a href="{{ path('pg_gsb_frais_listefrais') }}"{% if route == 'pg_gsb_frais_listefrais' %} aria-current="page"{% endif %}>Mes fiches de frais</a>
+    </li>
+    <li class="smenu">
+      <a href="index.php?uc=validerFrais&amp;action=voirFrais">Valider les frais</a>
+    </li>
+  </ul>
+  {# Déconnexion isolée en bas du menu, en rouge (cahier-charge-simple). #}
+  <a id="deconnexion" href="{{ path('pg_gsb_frais_deconnexion') }}">Déconnexion</a>
+</nav>
+{% endblock %}

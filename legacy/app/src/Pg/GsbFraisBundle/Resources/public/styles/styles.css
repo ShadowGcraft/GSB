@@ -1,121 +1,392 @@
 /* ---------------------------------------------------------------------------
-   Feuille de style de l'application GSB de 2013.
+   Feuille de style de l'application GSB de 2013, habillage « Croquis ».
 
-   ATTENTION : ce fichier ne figure PAS dans l'archive fournie. Les gabarits
-   Twig le réclament (bundles/gsbfrais/styles/styles.css) mais le dossier
-   Resources/public du bundle est absent de l'archive, tout comme le logo.
-   Sans cette feuille, l'application s'affiche sans aucune mise en forme.
+   Direction artistique reprise de maquette/gsb-fiches-frais-maquette.zip :
+   palette, polices, cartes et décor de voyage en filigrane. La disposition
+   d'origine est conservée : en-tête en haut, menu à gauche, contenu à droite.
 
-   Elle est donc reconstituée ici, à partir des seuls identifiants et classes
-   employés par les gabarits : #page, #entete, #logoGSB, #menuGauche,
-   #infosUtil, #menuList, .smenu, #contenu, .encadre, .listeLegere,
-   .qteForfait, .corpsForm, .piedForm, .erreur.
-   Elle vise la sobriété et la lisibilité, pas la fidélité graphique : le
-   rendu d'origine n'est documenté nulle part.
+   Ce fichier ne figurait pas dans l'archive fournie : les gabarits le
+   réclamaient sans qu'il existe.
    --------------------------------------------------------------------------- */
 
-body {
-    margin: 0;
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-    font-size: 14px;
-    color: #23303f;
-    background: #eef1f5;
+:root {
+  --gsb-bg: #00708F;
+  --gsb-ink: #FFFFFF;
+  --gsb-header: #004A5F;
+  --gsb-accent: #F2C94C;
+  --gsb-accent-ink: #1A1A1A;
+  --gsb-card-ink: #FFE3A3;
+  --gsb-card-fill: #B82800;
+  --gsb-open-border: #F2C94C;
+  --gsb-lock-border: #FF4526;
+  --gsb-open-badge-bg: #F2C94C;
+  --gsb-open-badge-ink: #4A1000;
+  --gsb-lock-badge-bg: rgba(0, 0, 0, 0.28);
+  --gsb-lock-badge-ink: #FFFFFF;
+  --gsb-deco: #BFE6F0;
+  --gsb-deco-opacity: 0.35;
+  --gsb-panel: rgba(0, 58, 74, 0.55);      /* panneaux posés sur le fond */
+  --gsb-panel-line: rgba(191, 230, 240, 0.28);
+  --gsb-danger: #FF4526;
+  --gsb-font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --gsb-font-body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --gsb-menu-width: 210px;
 }
 
-/* --- en-tête ------------------------------------------------------------ */
+*, *::before, *::after { box-sizing: border-box; }
 
-#page   { background: #1f3b63; color: #fff; }
-#entete { max-width: 1100px; margin: 0 auto; padding: 18px 24px; display: flex;
-          align-items: center; gap: 18px; }
-#logoGSB { height: 52px; }
-#entete h1 { font-size: 22px; font-weight: 600; margin: 0; }
+body.gsb-page {
+  margin: 0;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  background: var(--gsb-bg);
+  color: var(--gsb-ink);
+  font-family: var(--gsb-font-body);
+  font-size: 16px;
+  line-height: 1.5;
+}
 
-/* --- menu de gauche ----------------------------------------------------- */
+/* --- décor en filigrane : décoratif, ne capte aucun clic ------------------ */
 
-/* Le menu est fixe plutôt que flottant : la page de saisie enchaîne deux blocs
-   #contenu successifs, et un menu flottant n'aurait décalé que le premier. */
+.decor-voyage {
+  position: absolute;
+  left: 0;
+  top: 60px;
+  width: 100%;
+  height: calc(100% - 60px);
+  min-height: 824px;
+  z-index: 0;
+  pointer-events: none;
+  color: var(--gsb-deco);
+  opacity: var(--gsb-deco-opacity);
+}
+
+/* --- en-tête --------------------------------------------------------------- */
+
+#page { position: relative; z-index: 1; background: var(--gsb-header); }
+#entete {
+  height: 60px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.gsb-brand { display: flex; align-items: center; gap: 14px; }
+.gsb-logo {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gsb-accent); color: var(--gsb-accent-ink);
+  font-family: var(--gsb-font-display); font-weight: 700; font-size: 14px;
+}
+.gsb-brand-name { font-family: var(--gsb-font-display); font-weight: 700; font-size: 18px; }
+#entete h1 {
+  margin: 0;
+  font-family: var(--gsb-font-display);
+  font-weight: 600;
+  font-size: 15px;
+  opacity: .8;
+}
+
+/* --- corps : menu à gauche, contenu à droite ------------------------------ */
+
+#corps {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  padding: 24px 32px 48px;
+}
+
 #menuGauche {
-    position: fixed; top: 112px; left: 24px; width: 210px; padding: 16px;
-    background: #fff; border: 1px solid #d3dae4; border-radius: 6px;
+  flex: 0 0 var(--gsb-menu-width);
+  position: sticky;
+  top: 24px;
+  /* Hauteur d'écran : la déconnexion reste en bas du menu. */
+  min-height: calc(100vh - 60px - 48px);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--gsb-panel);
+  border: 1px solid var(--gsb-panel-line);
 }
-#infosUtil h3 { margin: 0 0 12px; font-size: 14px; color: #1f3b63;
-                border-bottom: 1px solid #e2e7ee; padding-bottom: 10px; }
-#menuList { list-style: none; margin: 0; padding: 0; }
-.smenu { margin-bottom: 6px; }
-.smenu a {
-    display: block; padding: 8px 10px; border-radius: 4px;
-    color: #1f3b63; text-decoration: none; font-size: 13px;
+#infosUtil {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--gsb-panel-line);
 }
-.smenu a:hover { background: #eef2f8; }
+.infosUtil__role {
+  font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--gsb-accent);
+}
+.infosUtil__nom { font-family: var(--gsb-font-display); font-weight: 700; font-size: 16px; }
 
-/* --- contenu ------------------------------------------------------------ */
+#menuList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.smenu a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: inherit;
+  font-size: 15px;
+  text-decoration: none;
+  opacity: .85;
+}
+.smenu a:hover { opacity: 1; background: rgba(255, 255, 255, .08); }
+.smenu a[aria-current="page"] { opacity: 1; font-weight: 700; background: rgba(242, 201, 76, .18); }
+
+/* Déconnexion : en bas du menu, en rouge (cahier-charge-simple). */
+#deconnexion {
+  margin-top: auto;
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 700;
+  color: #FFFFFF;
+  background: var(--gsb-danger);
+  text-decoration: none;
+}
+#deconnexion:hover { filter: brightness(1.08); }
+
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid #FFFFFF;
+  outline-offset: 3px;
+}
+
+/* --- contenu --------------------------------------------------------------- */
 
 #contenu {
-    margin: 24px 24px 24px 270px; padding: 22px 26px;
-    background: #fff; border: 1px solid #d3dae4; border-radius: 6px;
+  flex: 1 1 auto;
+  min-width: 0;                 /* laisse les tableaux se contraindre */
+  max-width: 780px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  border-radius: 14px;
+  background: var(--gsb-panel);
+  border: 1px solid var(--gsb-panel-line);
 }
-#contenu h2 { margin: 0 0 18px; font-size: 19px; color: #1f3b63; }
-#contenu h3 { font-size: 15px; color: #1f3b63; margin: 22px 0 10px; }
+/* Page « Mes fiches de frais » : les cartes se posent directement sur le fond. */
+#contenu.contenu--large {
+  max-width: 900px;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+/* La page de saisie empile deux blocs #contenu : on les met en colonne. */
+#corps > #contenu + #contenu { margin-top: 0; }
+/* Page de saisie : deux blocs empilés à droite du menu, sans vide sous le premier. */
+#corps:has(> #contenu + #contenu) {
+  display: grid;
+  grid-template-columns: var(--gsb-menu-width) minmax(0, 780px);
+  grid-template-rows: auto 1fr;
+  row-gap: 20px;
+}
+#corps:has(> #contenu + #contenu) > #menuGauche { grid-row: 1 / span 2; }
+#corps:has(> #contenu + #contenu) > #contenu { grid-column: 2; align-self: start; }
 
-/* La page de connexion n'affiche pas de menu : le contenu reprend la largeur. */
-body:not(:has(#menuGauche)) #contenu { margin-left: 24px; max-width: 560px; }
+#contenu.contenu--connexion { max-width: 420px; margin: 40px auto; }
+#contenu.contenu--connexion input[type="text"],
+#contenu.contenu--connexion input[type="password"] { width: 100%; box-sizing: border-box; }
+
+#contenu h2, .gsb-heading h2 {
+  margin: 0 0 16px;
+  font-family: var(--gsb-font-display);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+}
+#contenu h3 {
+  margin: 24px 0 10px;
+  font-family: var(--gsb-font-display);
+  font-weight: 700;
+  font-size: 19px;
+}
 
 .encadre {
-    border: 1px solid #d3dae4; border-left: 4px solid #1f3b63;
-    border-radius: 4px; padding: 12px 16px; margin-bottom: 18px;
-    background: #f8fafc;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .18);
+  border-left: 6px solid var(--gsb-accent);
 }
+.encadre__etat {
+  margin: 0 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+}
+.encadre__etat strong { color: var(--gsb-card-ink); }
 
-/* --- tableaux ----------------------------------------------------------- */
+/* --- tableaux --------------------------------------------------------------- */
 
-.listeLegere { width: 100%; border-collapse: collapse; margin-bottom: 22px; }
+.tableau-defilant { width: 100%; overflow-x: auto; margin-bottom: 20px; }
+.listeLegere { width: 100%; border-collapse: collapse; }
 .listeLegere caption {
-    text-align: left; font-weight: 600; color: #1f3b63;
-    padding-bottom: 8px; font-size: 14px;
+  text-align: left;
+  font-weight: 700;
+  padding-bottom: 8px;
+  color: var(--gsb-card-ink);
 }
 .listeLegere th, .listeLegere td {
-    border: 1px solid #d9dfe8; padding: 7px 10px; text-align: left; font-size: 13px;
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--gsb-panel-line);
+  overflow-wrap: anywhere;
 }
-.listeLegere th { background: #1f3b63; color: #fff; font-weight: 600; }
-.listeLegere tr:nth-child(even) td { background: #f6f8fb; }
-.listeLegere td.montant, .listeLegere th.montant { text-align: right; }
-.qteForfait { text-align: center; font-weight: 600; }
-
-/* --- formulaires -------------------------------------------------------- */
-
-.corpsForm { margin-bottom: 14px; }
-.corpsForm fieldset {
-    border: 1px solid #d9dfe8; border-radius: 4px; padding: 14px 18px; margin: 0;
+.listeLegere th {
+  background: var(--gsb-card-fill);
+  color: var(--gsb-card-ink);
+  font-weight: 700;
+  white-space: nowrap;
 }
-.corpsForm legend { color: #1f3b63; font-weight: 600; padding: 0 6px; }
-label { display: inline-block; min-width: 190px; }
+.listeLegere tr:nth-child(odd) td { background: rgba(255, 255, 255, .04); }
+.listeLegere .montant { text-align: right; white-space: nowrap; }
+.listeLegere .action { width: 1%; white-space: nowrap; text-align: right; }
+.listeLegere .vide { font-style: italic; opacity: .8; }
+.qteForfait { font-weight: 700; font-size: 18px; }
+.lien-suppr { color: var(--gsb-card-ink); font-weight: 700; }
+
+/* --- formulaires ------------------------------------------------------------ */
+
+fieldset {
+  margin: 0;
+  padding: 16px 20px;
+  border: 1px solid var(--gsb-panel-line);
+  border-radius: 10px;
+}
+legend { padding: 0 8px; font-weight: 700; color: var(--gsb-accent); }
+.corpsForm p, #contenu form > p {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 10px 0;
+}
+label { flex: 0 0 180px; }
 input[type=text], input[type=password], select {
-    padding: 6px 8px; border: 1px solid #c3ccd9; border-radius: 3px;
-    font-size: 13px; font-family: inherit;
+  max-width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: #FFFFFF;
+  color: #1A1A1A;
+  font: inherit;
 }
-input[type=text]:focus, input[type=password]:focus, select:focus {
-    outline: none; border-color: #1f3b63;
-}
-.piedForm { margin-top: 14px; }
-input[type=submit], input[type=reset] {
-    padding: 7px 16px; border-radius: 3px; font-size: 13px; cursor: pointer;
-    border: 1px solid #1f3b63;
-}
-input[type=submit] { background: #1f3b63; color: #fff; }
-input[type=reset]  { background: #fff; color: #1f3b63; margin-left: 8px; }
+input[type=text]:focus, input[type=password]:focus { border-color: var(--gsb-accent); outline: none; }
+/* Le champ Libellé ne déborde plus quand la fenêtre rétrécit (cahier-charge-simple). */
+.champ-large { flex: 1 1 260px; width: 100%; min-width: 0; }
 
-/* --- messages d'erreur -------------------------------------------------- */
+.piedForm p, p.piedForm { display: flex; gap: 12px; margin-top: 18px; }
+input[type=submit], input[type=reset] {
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 2px solid var(--gsb-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+input[type=submit] { background: var(--gsb-accent); color: var(--gsb-accent-ink); }
+input[type=reset]  { background: transparent; color: var(--gsb-ink); }
 
 .erreur {
-    background: #fdf0f0; border: 1px solid #e3b8b8; border-left: 4px solid #9b2c2c;
-    color: #9b2c2c; border-radius: 4px; padding: 10px 16px;
-    margin: 0 24px 16px 270px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(184, 40, 0, .85);
+  border-left: 6px solid var(--gsb-lock-border);
+  color: #FFFFFF;
 }
 .erreur ul { margin: 0; padding-left: 18px; }
 
-/* Le gabarit erreurs.html.twig est inclus meme quand la liste d'erreurs est
-   vide : il produit alors un bandeau rouge sans texte. On le masque. */
-.erreur:has(ul:empty) { display: none; }
+.visuellement-cache {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
 
-a { color: #1f3b63; }
-p { margin: 10px 0; }
+/* --- cartes des fiches (maquette) -------------------------------------------- */
+
+.gsb-heading {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+}
+.gsb-heading h2 { margin: 0; font-size: 28px; }
+.gsb-heading p { margin: 4px 0 0; font-size: 15px; opacity: .8; }
+.gsb-legend { display: flex; gap: 18px; font-size: 14px; margin: 0; padding: 0; list-style: none; }
+.gsb-legend li { display: flex; align-items: center; gap: 8px; }
+
+.gsb-fiches {
+  list-style: none; margin: 0 0 40px; padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+.fiche__form { margin: 0; }
+.fiche {
+  width: 100%;
+  min-height: 112px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 4px solid var(--gsb-lock-border);
+  background: var(--gsb-card-fill);
+  color: var(--gsb-card-ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.fiche:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0, 0, 0, .22); }
+.fiche--ouverte { border-color: var(--gsb-open-border); }
+.fiche--choisie { box-shadow: 0 0 0 3px #FFFFFF; }
+.fiche__top { display: flex; align-items: flex-start; justify-content: space-between; }
+.fiche__badge {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 999px;
+  background: var(--gsb-lock-badge-bg); color: var(--gsb-lock-badge-ink);
+}
+.fiche--ouverte .fiche__badge { background: var(--gsb-open-badge-bg); color: var(--gsb-open-badge-ink); }
+.fiche__mois { font-family: var(--gsb-font-display); font-weight: 700; font-size: 24px; line-height: 1.1; }
+.fiche__action { font-size: 13px; opacity: .85; margin-top: 2px; }
+.fiche:hover .fiche__action { text-decoration: underline; opacity: 1; }
+
+.gsb-detail {
+  padding: 22px 26px;
+  border-radius: 12px;
+  background: var(--gsb-panel);
+  border: 1px solid var(--gsb-panel-line);
+}
+#contenu .gsb-detail > h3:first-child { margin-top: 0; }
+.gsb-empty { font-size: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fiche { transition: none; }
+  .fiche:hover { transform: none; }
+}
+
+/* --- petits écrans : le menu passe au-dessus du contenu ---------------------- */
+
+@media (max-width: 900px) {
+  #entete { padding: 0 20px; }
+  #entete h1 { display: none; }
+  #corps { flex-direction: column; align-items: stretch; padding: 20px; gap: 20px; }
+  #menuGauche { position: static; min-height: 0; flex-basis: auto; }
+  #deconnexion { margin-top: 14px; }
+  #corps:has(> #contenu + #contenu) { display: flex; }
+  #corps:has(> #contenu + #contenu) > #contenu { flex-basis: auto; align-self: stretch; }
+  #contenu { max-width: none; padding: 20px; }
+  label { flex-basis: 100%; }
+  .gsb-fiches { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .fiche { min-height: 100px; }
+  .fiche__mois { font-size: 22px; }
+  .gsb-heading h2 { font-size: 24px; }
+  .decor-voyage { opacity: 0.2; }
+}

@@ -1,8 +1,7 @@
-<div class ="erreur">
-<ul>
- {% for erreur in  leserreurs %}
-	
-      <li>{{erreur}}</li>
-	
-{%endfor%}
-</ul></div>
+{% if leserreurs %}
+<div class="erreur" role="alert">
+  <ul>
+    {% for erreur in leserreurs %}<li>{{ erreur }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}

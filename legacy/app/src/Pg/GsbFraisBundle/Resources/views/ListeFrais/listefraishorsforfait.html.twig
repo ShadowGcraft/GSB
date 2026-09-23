@@ -1,20 +1,19 @@
-<table class="listeLegere">
-  	   <caption>Descriptif des éléments hors forfait -{{nbjustificatifs}} justificatifs reçus -
-       </caption>
-             <tr>
-                <th class="date">Date</th>
-                <th class="libelle">Libellé</th>
-                <th class='montant'>Montant</th>                
-             </tr>
-         {% for unFrais in  lesfraishorsforfait %}
-		{% set date = unFrais.date%}
-                {% set libelle = unFrais.libelle%}
-                {% set montant = unFrais.montant%}
-                <tr>
-                    <td>{{date}}</td>
-                    <td>{{libelle}}</td>
-                    <td>{{montant}}</td>
-                </tr>
-           {% endfor %}  
-    </table>
- 
+<div class="tableau-defilant">
+  <table class="listeLegere">
+    <caption>Éléments hors forfait · {{ nbjustificatifs }} justificatif{{ nbjustificatifs > 1 ? 's' }} reçu{{ nbjustificatifs > 1 ? 's' }}</caption>
+    <tr>
+      <th class="date">Date</th>
+      <th class="libelle">Libellé</th>
+      <th class="montant">Montant</th>
+    </tr>
+    {% for unFrais in lesfraishorsforfait %}
+      <tr>
+        <td>{{ unFrais.date }}</td>
+        <td>{{ unFrais.libelle }}</td>
+        <td class="montant">{{ unFrais.montant }} €</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="3" class="vide">Aucun frais hors forfait ce mois-ci.</td></tr>
+    {% endfor %}
+  </table>
+</div>

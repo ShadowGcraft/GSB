@@ -1,54 +1,52 @@
 <div id="contenu">
-<table class="listeLegere">
-  	   <caption>Descriptif des éléments hors forfait
-       </caption>
-             <tr>
-                <th class="date">Date</th>
-				<th class="libelle">Libellé</th>  
-                <th class="montant">Montant</th>  
-                <th class="action">&nbsp;</th>              
-             </tr>
- 	{% for unfrais in  lesfraishorsforfait %}
-             {% set libelle = unfrais.libelle %}
-             {% set date = unfrais.date %}
-             {% set montant = unfrais.montant %}
-             {% set idfrais = unfrais.id %}
-             <tr>
-                <td>{{date}}</td>
-                <td>{{libelle}}</td>
-                <td>{{montant}}</td>
-                <td><a href="{{path('pg_gsb_frais_supprimerfraishorsforfait',{'id' : idfrais})}}" 
-				onclick="return confirm('Voulez-vous vraiment supprimer ce frais?');">Supprimer ce frais</a></td>
-             </tr>
-	{%endfor%}  
-                                          
+  <div class="tableau-defilant">
+    <table class="listeLegere">
+      <caption>Descriptif des éléments hors forfait</caption>
+      <tr>
+        <th class="date">Date</th>
+        <th class="libelle">Libellé</th>
+        <th class="montant">Montant</th>
+        <th class="action"><span class="visuellement-cache">Action</span></th>
+      </tr>
+      {% for unfrais in lesfraishorsforfait %}
+        <tr>
+          <td>{{ unfrais.date }}</td>
+          <td>{{ unfrais.libelle }}</td>
+          <td class="montant">{{ unfrais.montant }} €</td>
+          <td class="action">
+            <a class="lien-suppr" href="{{ path('pg_gsb_frais_supprimerfraishorsforfait', {'id': unfrais.id}) }}"
+               onclick="return confirm('Voulez-vous vraiment supprimer ce frais ?');">Supprimer</a>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="vide">Aucun frais hors forfait pour ce mois.</td></tr>
+      {% endfor %}
     </table>
-      <form action="{{path('pg_gsb_frais_validerfraishorsforfais')}}" method="post">
-      <div class="corpsForm">
-         
-          <fieldset>
-            <legend>Nouvel élément hors forfait
-            </legend>
-            <p>
-              <label for="txtDateHF">Date (jj/mm/aaaa): </label>
-              <input type="text" id="txtDateHF" name="dateFrais" size="10" maxlength="10" value=""  />
-            </p>
-            <p>
-              <label for="txtLibelleHF">Libellé</label>
-              <input type="text" id="txtLibelleHF" name="libelle" size="70" maxlength="256" value="" />
-            </p>
-            <p>
-              <label for="txtMontantHF">Montant : </label>
-              <input type="text" id="txtMontantHF" name="montant" size="10" maxlength="10" value="" />
-            </p>
-          </fieldset>
-      </div>
-      <div class="piedForm">
+  </div>
+
+  <form action="{{ path('pg_gsb_frais_validerfraishorsforfais') }}" method="post">
+    <div class="corpsForm">
+      <fieldset>
+        <legend>Nouvel élément hors forfait</legend>
+        <p>
+          <label for="txtDateHF">Date (jj/mm/aaaa)</label>
+          <input type="text" id="txtDateHF" name="dateFrais" size="10" maxlength="10" value="" />
+        </p>
+        <p>
+          <label for="txtLibelleHF">Libellé</label>
+          <input type="text" id="txtLibelleHF" class="champ-large" name="libelle" maxlength="256" value="" />
+        </p>
+        <p>
+          <label for="txtMontantHF">Montant</label>
+          <input type="text" id="txtMontantHF" name="montant" size="10" maxlength="10" inputmode="decimal" value="" />
+        </p>
+      </fieldset>
+    </div>
+    <div class="piedForm">
       <p>
-        <input id="ajouter" type="submit" value="Ajouter" size="20" />
-        <input id="effacer" type="reset" value="Effacer" size="20" />
-      </p> 
-      </div>
-        
-      </form>
+        <input id="ajouter" type="submit" value="Ajouter" />
+        <input id="effacer" type="reset" value="Effacer" />
+      </p>
+    </div>
+  </form>
 </div>
