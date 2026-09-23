@@ -278,7 +278,8 @@ if [ "$code" = "200" ]; then
     echo "      dandre  / oppg5    David André, quatre fiches, tous les états"
     echo "      cbedos  / gvide    Christian Bedos, trois fiches"
     echo "      pbentot / doypa    Pascal Bentot, une seule fiche"
-    echo "      admin   / gsbadmin Administrateur : validation des fiches, comptes"
+    echo "      comptable / gsbcompta  Comptable : validation des fiches"
+    echo "      admin     / gsbadmin   Administrateur : fiches et comptes"
     echo
     echo "    Pour arrêter :  ./sans-docker/arreter-mac.sh"
     echo

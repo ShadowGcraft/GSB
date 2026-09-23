@@ -12,7 +12,11 @@ use Symfony\Component\HttpFoundation\Request;
 abstract class GsbController extends Controller
 {
     const ROLE_VISITEUR = 'visiteur';
+    const ROLE_COMPTABLE = 'comptable';
     const ROLE_ADMIN = 'admin';
+
+    /** Rôles de l'espace de gestion : fiches pour les deux, comptes pour l'administrateur seul. */
+    protected static $rolesGestion = array(self::ROLE_COMPTABLE, self::ROLE_ADMIN);
 
     /** Taille maximale d'une pièce jointe, en octets. */
     const TAILLE_MAX_JUSTIFICATIF = 5242880;
@@ -36,12 +40,13 @@ abstract class GsbController extends Controller
 
     /**
      * Retourne une redirection vers l'accueil si l'utilisateur n'a pas le rôle
-     * demandé, null sinon. Usage : if ($refus = $this->exigeRole(...)) return $refus;
+     * demandé, ou l'un des rôles demandés, null sinon.
+     * Usage : if ($refus = $this->exigeRole(...)) return $refus;
      */
-    protected function exigeRole($role)
+    protected function exigeRole($roles)
     {
         $session = $this->session();
-        if (!$session->get('id') || $session->get('role') !== $role) {
+        if (!$session->get('id') || !in_array($session->get('role'), (array) $roles, true)) {
             return $this->redirectToRoute('pg_gsb_frais_home');
         }
         return null;

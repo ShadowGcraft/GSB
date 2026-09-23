@@ -18,21 +18,26 @@ class PdoGsb{
 /**
  * Met à niveau une base installée avant les évolutions 2026
  *
- * La table justificatif, créée en dernier, sert de témoin : tant qu'elle
- * manque, le script Resources/sql/evolutions-2026.sql est rejoué. Toutes ses
- * instructions sont idempotentes.
+ * Chaque script de Resources/sql a son témoin : une requête qui compte ce que
+ * le script crée en dernier. Tant qu'elle renvoie zéro, le script est rejoué,
+ * dans l'ordre. Toutes leurs instructions sont idempotentes.
  */
         private function appliqueEvolutions(){
-                $req = "select count(*) from information_schema.tables
-                        where table_schema = database() and table_name = 'justificatif'";
-                if (PdoGsb::$monPdo->query($req)->fetchColumn() > 0) {
-                        return;
-                }
-                $script = file_get_contents(__DIR__.'/../Resources/sql/evolutions-2026.sql');
-                $script = preg_replace('/^\s*--.*$/m', '', $script);
-                foreach (explode(';', $script) as $instruction) {
-                        if (trim($instruction) !== '') {
-                                PdoGsb::$monPdo->exec($instruction);
+                $evolutions = array(
+                        'evolutions-2026.sql' => "select count(*) from information_schema.tables
+                                where table_schema = database() and table_name = 'justificatif'",
+                        'evolutions-2026-comptable.sql' => "select count(*) from visiteur where id = 'cpt'",
+                );
+                foreach ($evolutions as $fichier => $temoin) {
+                        if (PdoGsb::$monPdo->query($temoin)->fetchColumn() > 0) {
+                                continue;
+                        }
+                        $script = file_get_contents(__DIR__.'/../Resources/sql/'.$fichier);
+                        $script = preg_replace('/^\s*--.*$/m', '', $script);
+                        foreach (explode(';', $script) as $instruction) {
+                                if (trim($instruction) !== '') {
+                                        PdoGsb::$monPdo->exec($instruction);
+                                }
                         }
                 }
         }

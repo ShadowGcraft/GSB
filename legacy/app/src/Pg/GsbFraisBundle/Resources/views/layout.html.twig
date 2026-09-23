@@ -9,14 +9,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" />
     <link href="{{ asset('bundles/gsbfrais/styles/styles.css') }}" rel="stylesheet" type="text/css" />
   </head>
-  {# Espace administrateur : autre jeu de couleurs, pour marquer le changement de statut. #}
-  <body class="gsb-page{% if app.session.get('role') == 'admin' %} gsb-admin{% endif %}">
+  {# Chaque statut a son jeu de couleurs : bleu pour le visiteur, vert pour le
+     comptable, bordeaux pour l'administrateur. #}
+  {% set role = app.session.get('role') %}
+  {% set statuts = { 'comptable': 'Comptable', 'admin': 'Administrateur' } %}
+  <body class="gsb-page{% if statuts[role] is defined %} gsb-{{ role }}{% endif %}">
     {{ include('PgGsbFraisBundle::_decor_voyage.html.twig') }}
     <div id="page">
       <div id="entete">
         <img src="{{ asset('bundles/gsbfrais/images/logo.png') }}" id="logoGSB" alt="Laboratoire Galaxy-Swiss Bourdin" title="Laboratoire Galaxy-Swiss Bourdin" />
         <h1>Suivi du remboursement des frais</h1>
-        {% if app.session.get('role') == 'admin' %}<span class="badge-statut">Administrateur</span>{% endif %}
+        {% if statuts[role] is defined %}<span class="badge-statut">{{ statuts[role] }}</span>{% endif %}
       </div>
     </div>
     <div id="corps">

@@ -85,7 +85,7 @@ code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8088/accueil || e
 if [ "$code" = "200" ]; then
     echo
     echo "    L'application répond : http://localhost:8088"
-    echo "    Comptes de démonstration : dandre / oppg5, cbedos / gvide, pbentot / doypa, admin / gsbadmin"
+    echo "    Comptes de démonstration : dandre / oppg5, cbedos / gvide, pbentot / doypa, comptable / gsbcompta, admin / gsbadmin"
     echo "    Mode développement, avec la barre de débogage : http://localhost:8088/app_dev.php/accueil"
 else
     echo "    ÉCHEC : la page d'accueil renvoie $code"

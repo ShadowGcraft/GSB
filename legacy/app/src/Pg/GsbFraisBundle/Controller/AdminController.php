@@ -4,21 +4,34 @@ require_once("include/fct.inc.php");
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Espace administrateur, ajout 2026 : traitement des fiches clôturées et
- * gestion des comptes. Toute action qui modifie la base passe par un POST
- * porteur d'un jeton CSRF.
+ * Espace de gestion, ajout 2026. Le comptable et l'administrateur traitent
+ * les fiches clôturées ; seul l'administrateur gère les comptes. Toute action
+ * qui modifie la base passe par un POST porteur d'un jeton CSRF.
  */
 class AdminController extends GsbController
 {
     const JETON = 'gsb_admin';
 
     private static $filtresEtat = array('CL', 'VA', 'RB', 'CR');
-    private static $roles = array(self::ROLE_VISITEUR => 'Visiteur', self::ROLE_ADMIN => 'Administrateur');
+    private static $roles = array(self::ROLE_VISITEUR => 'Visiteur', self::ROLE_COMPTABLE => 'Comptable',
+                                  self::ROLE_ADMIN => 'Administrateur');
 
-    /** Contrôle commun : rôle administrateur, et jeton valide pour un POST. */
+    /** Fiches : comptable ou administrateur. */
     private function refus(Request $request = null)
     {
-        if ($refus = $this->exigeRole(self::ROLE_ADMIN)) return $refus;
+        return $this->refusPour(self::$rolesGestion, $request);
+    }
+
+    /** Comptes : administrateur seul. */
+    private function refusComptes(Request $request = null)
+    {
+        return $this->refusPour(self::ROLE_ADMIN, $request);
+    }
+
+    /** Contrôle commun : rôle attendu, et jeton valide pour un POST. */
+    private function refusPour($roles, Request $request = null)
+    {
+        if ($refus = $this->exigeRole($roles)) return $refus;
         if ($request && !$this->isCsrfTokenValid(self::JETON, $request->request->get('_jeton'))) {
             $this->ajouteMessage('erreur', 'Le formulaire a expiré, recommencez.');
             return $this->redirect($request->headers->get('referer') ?: $this->generateUrl('pg_gsb_frais_admin_fiches'));
@@ -153,11 +166,11 @@ class AdminController extends GsbController
 
     public function comptesAction(Request $request)
     {
-        if ($refus = $this->refus()) return $refus;
+        if ($refus = $this->refusComptes()) return $refus;
         $compte = array('nom' => '', 'prenom' => '', 'login' => '', 'role' => self::ROLE_VISITEUR);
         $erreursCreation = array();
         if ($request->isMethod('POST')) {
-            if ($refus = $this->refus($request)) return $refus;
+            if ($refus = $this->refusComptes($request)) return $refus;
             $compte = $this->lireCompte($request);
             $erreursCreation = $this->valideCompte($compte);
             if (!$erreursCreation) {
@@ -176,7 +189,7 @@ class AdminController extends GsbController
 
     public function modifierCompteAction(Request $request, $id)
     {
-        if ($refus = $this->refus()) return $refus;
+        if ($refus = $this->refusComptes()) return $refus;
         $existant = $this->pdo()->getUnCompte($id);
         if (!$existant) {
             throw $this->createNotFoundException('Compte introuvable');
@@ -184,7 +197,7 @@ class AdminController extends GsbController
         $compte = $existant;
         $erreurs = array();
         if ($request->isMethod('POST')) {
-            if ($refus = $this->refus($request)) return $refus;
+            if ($refus = $this->refusComptes($request)) return $refus;
             $compte = $this->lireCompte($request) + array('id' => $id, 'actif' => $existant['actif']);
             $erreurs = $this->valideCompte($compte, $id);
             if ($id === $this->session()->get('id') && $compte['role'] !== self::ROLE_ADMIN) {
@@ -206,7 +219,7 @@ class AdminController extends GsbController
 
     public function activerCompteAction(Request $request, $id)
     {
-        if ($refus = $this->refus($request)) return $refus;
+        if ($refus = $this->refusComptes($request)) return $refus;
         $compte = $this->pdo()->getUnCompte($id);
         if (!$compte) {
             throw $this->createNotFoundException('Compte introuvable');

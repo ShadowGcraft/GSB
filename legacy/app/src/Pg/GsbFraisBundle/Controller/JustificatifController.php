@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 /**
  * Pièces jointes des frais hors forfait.
  *
- * Consultation : le visiteur propriétaire ou l'administrateur. Ajout et
+ * Consultation : le visiteur propriétaire, le comptable ou l'administrateur. Ajout et
  * suppression : le propriétaire, tant que la fiche est en cours de saisie.
  */
 class JustificatifController extends GsbController
@@ -30,7 +30,7 @@ class JustificatifController extends GsbController
         $session = $this->session();
         $justificatif = $this->pdo()->getUnJustificatif($id);
         $autorise = $justificatif && $session->get('id') && (
-            $session->get('role') === self::ROLE_ADMIN || $justificatif['idVisiteur'] === $session->get('id'));
+            in_array($session->get('role'), self::$rolesGestion, true) || $justificatif['idVisiteur'] === $session->get('id'));
         $chemin = $justificatif ? $this->dossierJustificatifs().'/'.basename($justificatif['nomStocke']) : null;
         if (!$autorise || !is_file($chemin)) {
             throw $this->createNotFoundException('Justificatif introuvable');

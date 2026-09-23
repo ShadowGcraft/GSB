@@ -204,7 +204,8 @@ chmod -R 777 app/cache app/logs app/justificatifs 2>/dev/null || true
         Write-Host '      dandre  / oppg5    David André, quatre fiches, tous les états'
         Write-Host '      cbedos  / gvide    Christian Bedos, trois fiches'
         Write-Host '      pbentot / doypa    Pascal Bentot, une seule fiche'
-        Write-Host '      admin   / gsbadmin Administrateur : validation des fiches, comptes'
+        Write-Host '      comptable / gsbcompta  Comptable : validation des fiches'
+        Write-Host '      admin     / gsbadmin   Administrateur : fiches et comptes'
         Write-Host ''
         Write-Host "    Mode développement : $adresse/app_dev.php/accueil"
         Write-Host '    Pour arrêter : docker compose down'

@@ -11,7 +11,7 @@ class HomeController extends GsbController
         if (!$session->get('id')) {
             return $this->render('PgGsbFraisBundle:Home:connexion.html.twig');
         }
-        if ($session->get('role') === self::ROLE_ADMIN) {
+        if (in_array($session->get('role'), self::$rolesGestion, true)) {
             return $this->redirectToRoute('pg_gsb_frais_admin_fiches');
         }
         return $this->render('PgGsbFraisBundle::accueil.html.twig');

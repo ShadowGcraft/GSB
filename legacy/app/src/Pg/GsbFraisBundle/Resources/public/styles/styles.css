@@ -474,9 +474,11 @@ input[type=file]::file-selector-button {
 .ligne-inactive td.action { opacity: 1; }
 .listeLegere .action .bouton-petit + .form-inline { margin-left: 6px; }
 
-/* --- espace administrateur : vert sapin et or --------------------------------- */
+/* --- espaces de gestion : un jeu de couleurs par statut ------------------------
+   Visiteur : bleu (valeurs de :root). Comptable : vert sapin et or.
+   Administrateur : bordeaux et champagne. */
 
-body.gsb-admin {
+body.gsb-comptable {
   --gsb-bg: #1E5A45;
   --gsb-header: #0E3A2B;
   --gsb-accent: #E8BE4F;
@@ -487,13 +489,29 @@ body.gsb-admin {
   --gsb-panel: rgba(6, 38, 28, 0.55);
   --gsb-panel-line: rgba(207, 235, 219, 0.26);
 }
-body.gsb-admin .smenu a[aria-current="page"] { background: rgba(232, 190, 79, .2); }
+body.gsb-comptable .smenu a[aria-current="page"] { background: rgba(232, 190, 79, .2); }
+
+body.gsb-admin {
+  --gsb-bg: #6E1F31;
+  --gsb-header: #45101E;
+  --gsb-accent: #F0C98C;
+  --gsb-accent-ink: #2A0A12;
+  --gsb-card-ink: #FFE3D6;
+  --gsb-card-fill: #9C2C45;
+  --gsb-deco: #F3D3DA;
+  --gsb-deco-opacity: 0.2;
+  --gsb-panel: rgba(40, 6, 16, 0.55);
+  --gsb-panel-line: rgba(243, 211, 218, 0.26);
+  --gsb-danger: #FF4F33;
+}
+body.gsb-admin .smenu a[aria-current="page"] { background: rgba(240, 201, 140, .2); }
+
 .badge-statut {
   padding: 4px 12px; border-radius: 999px;
   background: var(--gsb-accent); color: var(--gsb-accent-ink);
   font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
 }
-.gsb-admin #entete h1 { margin-left: auto; }
+.gsb-admin #entete h1, .gsb-comptable #entete h1 { margin-left: auto; }
 #contenu.contenu--admin { max-width: 1000px; }
 .filtres { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .filtres a {
