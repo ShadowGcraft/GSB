@@ -1,35 +1,71 @@
-{# Décor voyage en filigrane — purement décoratif (aria-hidden). Un capybara s'y cache près de la mallette : ne pas le supprimer. #}
+{# Décor voyage en filigrane — purement décoratif (aria-hidden). Un capybara s'y cache près de la valise : ne pas le supprimer.
+   Le trajet : un repère de départ près du quai, l'avion entre les nuages, l'arrivée sur l'hôtel.
+   Les traits gardent la même épaisseur à toutes les échelles (vector-effect). #}
 <svg class="decor-voyage" viewBox="0 0 1440 824" preserveAspectRatio="xMidYMax slice" fill="none" aria-hidden="true" focusable="false">
-<g stroke="currentColor" stroke-width="1.5">
-<circle cx="40" cy="840" r="380"></circle>
-<ellipse cx="40" cy="840" rx="130" ry="380"></ellipse>
-<ellipse cx="40" cy="840" rx="260" ry="380"></ellipse>
-<path d="M-340 840 H420"></path>
-<path d="M-300 690 Q40 650 380 690"></path>
-<path d="M-200 560 Q40 530 280 560"></path>
-<circle cx="1440" cy="-20" r="300"></circle>
-<ellipse cx="1440" cy="-20" rx="150" ry="300"></ellipse>
-<path d="M1140 -20 H1740"></path>
-<path d="M1170 110 Q1440 150 1710 110"></path>
-<path d="M1230 220 Q1440 250 1650 220"></path>
+
+<!-- globe, en haut à droite -->
+<g stroke="currentColor" stroke-width="1.6">
+<circle cx="1330" cy="110" r="82"></circle>
+<ellipse cx="1330" cy="110" rx="36" ry="82"></ellipse>
+<path d="M1248 110 H1412"></path>
+<path d="M1260 68 Q1330 80 1400 68"></path>
+<path d="M1260 152 Q1330 140 1400 152"></path>
 </g>
-<path d="M90 690 C 230 520, 60 380, 170 250 S 520 20, 760 30 S 1180 120, 1330 300 C 1420 410, 1300 560, 1370 700" stroke="currentColor" stroke-width="3" stroke-dasharray="4 14" stroke-linecap="round"></path>
-<g stroke="currentColor" stroke-width="2.5" stroke-linejoin="round">
-<path d="M90 690 c-18 0 -30 -13 -30 -29 c0 -22 30 -50 30 -50 s30 28 30 50 c0 16 -12 29 -30 29 z"></path>
-<circle cx="90" cy="660" r="9"></circle>
-<path d="M1370 700 c-18 0 -30 -13 -30 -29 c0 -22 30 -50 30 -50 s30 28 30 50 c0 16 -12 29 -30 29 z"></path>
-<circle cx="1370" cy="670" r="9"></circle>
-<circle cx="170" cy="250" r="7" fill="currentColor"></circle>
-<circle cx="760" cy="30" r="7" fill="currentColor"></circle>
+
+<!-- trajet en pointillé -->
+<path d="M230 546 C 280 400, 380 250, 600 205 S 990 160, 1105 300 C 1165 370, 1200 410, 1225 456"
+      stroke="currentColor" stroke-width="3" stroke-dasharray="2 16" stroke-linecap="round"></path>
+
+<!-- repères de départ et d'arrivée -->
+<g stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(200 553) scale(2.5)">
+<path vector-effect="non-scaling-stroke" d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"></path>
+<circle vector-effect="non-scaling-stroke" cx="12" cy="10" r="3"></circle>
 </g>
-<g transform="translate(1290 210) rotate(40) scale(3.4)" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
-<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"></path>
+<g transform="translate(1195 463) scale(2.5)">
+<path vector-effect="non-scaling-stroke" d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"></path>
+<circle vector-effect="non-scaling-stroke" cx="12" cy="10" r="3"></circle>
 </g>
-<g transform="translate(46 330) scale(4)" stroke="currentColor" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round">
-<rect x="2" y="7" width="20" height="14" rx="2"></rect>
-<path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
 </g>
-<g transform="translate(52 432) scale(1.05)" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+
+<!-- avion, dans le sens du trajet -->
+<g transform="translate(560 150) scale(3.6) rotate(38 12 12)" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+<path vector-effect="non-scaling-stroke" d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"></path>
+</g>
+
+<!-- nuages -->
+<g stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(300 120) scale(3.2)"><path vector-effect="non-scaling-stroke" d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></g>
+<g transform="translate(900 60) scale(2.4)"><path vector-effect="non-scaling-stroke" d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></g>
+<g transform="translate(1000 330) scale(2)"><path vector-effect="non-scaling-stroke" d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></g>
+</g>
+
+<!-- hôtel, à l'arrivée -->
+<g transform="translate(1150 560)" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+<rect x="0" y="40" width="150" height="184" rx="3"></rect>
+<rect x="33" y="8" width="84" height="24" rx="4"></rect>
+<path d="M55 32 V40"></path><path d="M95 32 V40"></path>
+<text x="75" y="25" text-anchor="middle" font-size="14" font-weight="700" letter-spacing="2" fill="currentColor" stroke="none">HÔTEL</text>
+<g>
+<rect x="18" y="58" width="24" height="20" rx="2"></rect><rect x="63" y="58" width="24" height="20" rx="2"></rect><rect x="108" y="58" width="24" height="20" rx="2"></rect>
+<rect x="18" y="96" width="24" height="20" rx="2"></rect><rect x="63" y="96" width="24" height="20" rx="2"></rect><rect x="108" y="96" width="24" height="20" rx="2"></rect>
+<rect x="18" y="134" width="24" height="20" rx="2"></rect><rect x="63" y="134" width="24" height="20" rx="2"></rect><rect x="108" y="134" width="24" height="20" rx="2"></rect>
+</g>
+<path d="M58 224 V186 a17 17 0 0 1 34 0 V224"></path>
+<path d="M75 170 V224"></path>
+</g>
+
+<!-- quai, valise et capybara -->
+<g stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M0 784 H400"></path>
+<g transform="translate(150 660)">
+<path d="M24 30 V4 H48 V30"></path>
+<rect x="0" y="30" width="72" height="86" rx="9"></rect>
+<path d="M22 44 V102"></path><path d="M50 44 V102"></path>
+<circle cx="15" cy="120" r="4"></circle><circle cx="57" cy="120" r="4"></circle>
+</g>
+</g>
+<g transform="translate(238 724) scale(1.05)" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
 <path d="M10 52 C2 46 2 30 14 22 C26 14 44 14 56 18 C59 10 66 6 74 6 C83 6 89 11 90 18 C91 24 88 28 82 28 L68 30 C64 36 63 44 62 52 Z"></path>
 <path d="M68 7 C67 2 72 1 73 5"></path>
 <path d="M22 52 V57"></path><path d="M56 52 V57"></path>
@@ -37,19 +73,93 @@
 <circle cx="79" cy="14" r="1.6" fill="currentColor"></circle>
 <path d="M0 57 H110"></path>
 </g>
-<g transform="translate(1320 500) rotate(-12) scale(3.6)" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"></path>
-<path d="M8 8h8"></path><path d="M8 12h8"></path><path d="M8 16h5"></path>
+
+<!-- rails et traverses -->
+<g stroke="currentColor" stroke-linecap="round">
+<path d="M0 798 H1440" stroke-width="2.4"></path>
+<path d="M0 812 H1440" stroke-width="2.4"></path>
+<path d="M0 805 H1440" stroke-width="16" stroke-dasharray="4 24" stroke-linecap="butt" opacity="0.7"></path>
 </g>
-<g stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-<path d="M0 796 H1440"></path>
-<path d="M0 812 H1440"></path>
+
+<!-- globe de bureau, à gauche -->
+<g transform="translate(110 150)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="50" cy="50" r="42"></circle>
+<ellipse cx="50" cy="50" rx="18" ry="42"></ellipse>
+<path d="M8 50 H92"></path>
+<path d="M14 30 Q50 38 86 30"></path><path d="M14 70 Q50 62 86 70"></path>
+<path d="M4 50 A46 46 0 0 0 96 50" transform="rotate(-20 50 50)"></path>
+<path d="M50 96 V112"></path><path d="M28 116 H72"></path>
 </g>
-<path d="M0 804 H1440" stroke="currentColor" stroke-width="14" stroke-dasharray="3 22" opacity="0.8"></path>
-<g transform="translate(1000 752)" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
-<path d="M0 38 H260 V14 H70 C40 14 14 22 0 38 Z"></path>
-<path d="M90 20 H250"></path>
-<path d="M44 22 L70 22 L70 30 L28 30"></path>
-<circle cx="80" cy="42" r="4"></circle><circle cx="120" cy="42" r="4"></circle><circle cx="200" cy="42" r="4"></circle><circle cx="240" cy="42" r="4"></circle>
+
+<!-- passeport -->
+<g transform="translate(122 470)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<rect x="0" y="0" width="64" height="88" rx="6"></rect>
+<circle cx="32" cy="36" r="14"></circle>
+<ellipse cx="32" cy="36" rx="6" ry="14"></ellipse>
+<path d="M18 36 H46"></path>
+<path d="M16 66 H48"></path><path d="M22 74 H42"></path>
+</g>
+
+<!-- carte pliée, avec son itinéraire -->
+<g transform="translate(360 440)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M0 14 L44 0 L88 14 L132 0 V86 L88 100 L44 86 L0 100 Z"></path>
+<path d="M44 0 V86"></path><path d="M88 14 V100"></path>
+<path d="M14 72 C30 50 50 70 66 48 S104 40 114 24" stroke-dasharray="2 7"></path>
+<path d="M108 18 L120 30 M120 18 L108 30"></path>
+</g>
+
+<!-- montgolfière -->
+<g transform="translate(1070 120)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M40 0 C62 0 80 18 80 42 C80 66 58 82 50 96 H30 C22 82 0 66 0 42 C0 18 18 0 40 0 Z"></path>
+<path d="M40 0 C28 18 26 70 34 96"></path><path d="M40 0 C52 18 54 70 46 96"></path>
+<path d="M4 50 H76"></path>
+<path d="M32 96 L30 110"></path><path d="M48 96 L50 110"></path>
+<rect x="28" y="110" width="24" height="16" rx="3"></rect>
+</g>
+
+<!-- montagnes et soleil, à droite -->
+<g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="1392" cy="300" r="22"></circle>
+<path d="M1392 262 V270 M1392 330 V338 M1354 300 H1362 M1422 300 H1430 M1365 273 L1371 279 M1413 321 L1419 327 M1419 273 L1413 279 M1371 321 L1365 327"></path>
+<path d="M1250 440 L1310 360 L1345 402 L1375 372 L1440 440"></path>
+<path d="M1296 379 L1310 360 L1324 379 L1316 374 L1310 381 L1304 374 Z"></path>
+</g>
+
+<!-- rose des vents -->
+<g transform="translate(1000 620)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="0" cy="0" r="52"></circle>
+<circle cx="0" cy="0" r="44" stroke-dasharray="2 6"></circle>
+<path d="M0 -40 L9 -9 L40 0 L9 9 L0 40 L-9 9 L-40 0 L-9 -9 Z"></path>
+<path d="M0 -40 L0 40 M-40 0 L40 0" opacity="0.6"></path>
+<text x="0" y="-60" text-anchor="middle" font-size="16" font-weight="700" fill="currentColor" stroke="none">N</text>
+</g>
+
+<!-- appareil photo -->
+<g transform="translate(780 560)" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M0 16 H18 L26 4 H50 L58 16 H76 V66 H0 Z"></path>
+<circle cx="38" cy="40" r="15"></circle><circle cx="38" cy="40" r="7"></circle>
+<path d="M62 26 H68"></path>
+</g>
+
+<!-- quelques étoiles -->
+<g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+<path d="M470 70 V86 M462 78 H478"></path>
+<path d="M760 110 V122 M754 116 H766"></path>
+<path d="M1200 60 V72 M1194 66 H1206"></path>
+<path d="M200 390 V402 M194 396 H206"></path>
+<path d="M640 340 V352 M634 346 H646"></path>
+</g>
+
+<!-- train -->
+<g transform="translate(470 742)" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+<path d="M0 50 C2 30 24 12 70 10 H330 V50 Z"></path>
+<path d="M36 26 C46 20 58 18 72 18 V30 H30 Z"></path>
+<rect x="96" y="18" width="36" height="14" rx="3"></rect>
+<rect x="150" y="18" width="36" height="14" rx="3"></rect>
+<rect x="204" y="18" width="36" height="14" rx="3"></rect>
+<rect x="258" y="18" width="36" height="14" rx="3"></rect>
+<path d="M10 40 H330"></path>
+<circle cx="70" cy="52" r="5"></circle><circle cx="110" cy="52" r="5"></circle>
+<circle cx="250" cy="52" r="5"></circle><circle cx="290" cy="52" r="5"></circle>
 </g>
 </svg>
