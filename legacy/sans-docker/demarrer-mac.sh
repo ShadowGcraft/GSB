@@ -87,9 +87,7 @@ titre "3/6  Démarrage de la base"
 
 demarree() { "$MB/mariadb" --socket="$SOCKET" -uroot -proot -e "SELECT 1" > /dev/null 2>&1; }
 
-if demarree; then
-    info "déjà en marche sur le port $PORT_BASE"
-else
+lancer_serveur() {
     "$MB/mariadbd" \
         --defaults-file="$LOCAL/mysql/my.cnf" \
         --datadir="$LOCAL/mysql/data" \
@@ -105,12 +103,48 @@ else
                 ALTER USER 'root'@'localhost' IDENTIFIED BY 'root';
                 ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY 'root';
                 FLUSH PRIVILEGES;" > /dev/null 2>&1 || true
-            break
+            return 0
         fi
-        demarree && break
+        demarree && return 0
+        # Inutile d'attendre si le serveur a déjà abandonné.
+        grep -q '\[ERROR\] Aborting' "$LOCAL/log/mariadb.log" 2>/dev/null && return 1
     done
+    return 1
+}
 
-    demarree || echouer "La base n'a pas démarré. Voir local/log/mariadb.log"
+# Un arrêt brutal (extinction du Mac, fenêtre fermée) laisse des journaux
+# incohérents, et le serveur refuse ensuite de démarrer. MariaDB indique
+# lui-même la marche à suivre : écarter ces journaux, qu'il recrée. On les
+# déplace dans un dossier daté plutôt que de les supprimer ; les données des
+# tables ne sont pas touchées.
+reparer_journaux() {
+    local rebut="$LOCAL/mysql/ecartes/$(date +%Y%m%d-%H%M%S)"
+    local fait=1
+    if grep -q 'tc log' "$LOCAL/log/mariadb.log" 2>/dev/null && [ -f "$LOCAL/mysql/data/tc.log" ]; then
+        mkdir -p "$rebut" && mv "$LOCAL/mysql/data/tc.log" "$rebut/" && fait=0
+        souci "journal de transactions tc.log abîmé, écarté vers local/mysql/ecartes/"
+    fi
+    if grep -q 'Aria recovery failed' "$LOCAL/log/mariadb.log" 2>/dev/null; then
+        mkdir -p "$rebut" && mv "$LOCAL"/mysql/data/aria_log* "$rebut/" 2>/dev/null && fait=0
+        souci "journaux du moteur Aria abîmés, écartés vers local/mysql/ecartes/"
+    fi
+    return $fait
+}
+
+if demarree; then
+    info "déjà en marche sur le port $PORT_BASE"
+else
+    if ! lancer_serveur; then
+        if reparer_journaux; then
+            info "nouvelle tentative de démarrage"
+            lancer_serveur || true
+        fi
+    fi
+    if ! demarree; then
+        echo
+        tail -8 "$LOCAL/log/mariadb.log" | sed 's/^/      /'
+        echouer "La base n'a pas démarré. Journal complet : local/log/mariadb.log"
+    fi
     info "démarrée sur le port $PORT_BASE"
 fi
 
@@ -202,15 +236,26 @@ info "ressources publiées"
 
 titre "6/6  Serveur web"
 
+deja_lance=0
 if lsof -nP -iTCP:$PORT_WEB -sTCP:LISTEN > /dev/null 2>&1; then
-    qui=$(lsof -nP -iTCP:$PORT_WEB -sTCP:LISTEN -F c 2>/dev/null | head -1 | cut -c2-)
-    souci "Le port $PORT_WEB est occupé par « $qui »."
-    souci "Arrêtez ce programme, ou changez PORT_WEB en tête de ce script."
-    exit 1
+    pid=$(lsof -nP -iTCP:$PORT_WEB -sTCP:LISTEN -t 2>/dev/null | head -1)
+    commande=$(ps -o command= -p "$pid" 2>/dev/null || true)
+    # Notre propre serveur, lancé par une exécution précédente : on le garde.
+    if [[ "$commande" == *"sans-docker/routeur.php"* ]]; then
+        info "serveur web déjà en marche (processus $pid), il est conservé"
+        deja_lance=1
+    else
+        nom=$(ps -o comm= -p "$pid" 2>/dev/null | xargs basename 2>/dev/null || echo "inconnu")
+        souci "Le port $PORT_WEB est occupé par « $nom » (processus $pid), étranger au projet."
+        souci "Arrêtez ce programme, ou changez PORT_WEB en tête de ce script."
+        exit 1
+    fi
 fi
 
-("$PHP" -S 127.0.0.1:$PORT_WEB -t app/web sans-docker/routeur.php \
-    > "$LOCAL/log/php-server.log" 2>&1 &)
+if [ "$deja_lance" -eq 0 ]; then
+    ("$PHP" -S 127.0.0.1:$PORT_WEB -t app/web sans-docker/routeur.php \
+        > "$LOCAL/log/php-server.log" 2>&1 &)
+fi
 
 code=0
 for _ in $(seq 1 15); do
