@@ -73,14 +73,7 @@ body.gsb-page {
   justify-content: space-between;
   gap: 24px;
 }
-.gsb-brand { display: flex; align-items: center; gap: 14px; }
-.gsb-logo {
-  width: 36px; height: 36px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--gsb-accent); color: var(--gsb-accent-ink);
-  font-family: var(--gsb-font-display); font-weight: 700; font-size: 14px;
-}
-.gsb-brand-name { font-family: var(--gsb-font-display); font-weight: 700; font-size: 18px; }
+#logoGSB { height: 44px; width: auto; display: block; }
 #entete h1 {
   margin: 0;
   font-family: var(--gsb-font-display);
