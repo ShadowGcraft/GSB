@@ -178,8 +178,13 @@ if [ ! -f "$LOCAL/composer.phar" ]; then
         || echouer "Téléchargement de Composer impossible. Vérifiez le réseau ou le proxy."
 fi
 
-if [ ! -d app/vendor ]; then
-    info "installation des dépendances, comptez quelques minutes"
+# Un vendor installe avant une mise a jour du composer.lock garde les anciennes
+# versions (Twig 1.35 collait le texte avant chaque {{ }} sous PHP 7.4). Une
+# copie du composer.lock, deposee dans vendor apres chaque installation, permet
+# de le reperer.
+TEMOIN_VERROU=app/vendor/.composer.lock.installe
+if [ ! -d app/vendor ] || ! cmp -s app/composer.lock "$TEMOIN_VERROU"; then
+    info "installation ou mise à jour des dépendances, comptez quelques minutes"
     if [ ! -f app/composer.json ]; then
         (cd app && "$PHP" "$LOCAL/composer.phar" create-project \
             symfony/framework-standard-edition /tmp/gsb-sf "2.8.*" \
@@ -188,6 +193,7 @@ if [ ! -d app/vendor ]; then
         rm -rf /tmp/gsb-sf
     fi
     (cd app && "$PHP" "$LOCAL/composer.phar" install --no-interaction --no-scripts)
+    cp app/composer.lock "$TEMOIN_VERROU"
 else
     info "dépendances déjà installées"
 fi

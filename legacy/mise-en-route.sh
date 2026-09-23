@@ -24,7 +24,12 @@ for _ in $(seq 1 30); do
 done
 
 echo "==> 4/6  Dépendances Symfony"
-if [ ! -d app/vendor ]; then
+# Un vendor installe avant une mise a jour du composer.lock garde les anciennes
+# versions (Twig 1.35 collait le texte avant chaque {{ }} sous PHP 7.4). Une
+# copie du composer.lock, deposee dans vendor apres chaque installation, permet
+# de le reperer.
+TEMOIN_VERROU=app/vendor/.composer.lock.installe
+if [ ! -d app/vendor ] || ! cmp -s app/composer.lock "$TEMOIN_VERROU"; then
     # Le squelette Symfony 2.8 n'est pas versionné dans son intégralité : s'il
     # manque, on le réinstalle à côté puis on ne reprend que ce qui manque.
     docker compose exec -T web sh -c '
@@ -36,6 +41,7 @@ if [ ! -d app/vendor ]; then
         fi
         composer install --no-interaction --no-scripts
     '
+    cp app/composer.lock "$TEMOIN_VERROU"
 else
     echo "    déjà installées"
 fi

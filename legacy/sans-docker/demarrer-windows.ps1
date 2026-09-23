@@ -767,6 +767,21 @@ FLUSH PRIVILEGES;
     }
 
     <#
+        Le vendor correspond-il au composer.lock actuel ?
+
+        Des paquets presents peuvent etre perimes : un vendor installe avant une
+        mise a jour du composer.lock garde les anciennes versions. Avec Twig
+        1.35 sur PHP 7.4, l'espace avant chaque {{ }} disparaissait des pages.
+        Apres chaque installation, une copie du composer.lock est deposee dans
+        vendor ; si elle differe du composer.lock courant, on reinstalle.
+    #>
+    $temoinVerrou = 'app\vendor\.composer.lock.installe'
+    function Test-VerrouAJour {
+        if (-not (Test-Path $temoinVerrou)) { return $false }
+        return (Get-FileHash 'app\composer.lock').Hash -eq (Get-FileHash $temoinVerrou).Hash
+    }
+
+    <#
         Installe les dependances dans un dossier donne.
 
         Composer y a besoin de composer.json et composer.lock, rien d'autre :
@@ -847,9 +862,17 @@ FLUSH PRIVILEGES;
            Detail dans $script:Journal"
         }
         Info 'dependances installees'
+    } elseif (-not (Test-VerrouAJour)) {
+        # Mise a jour sur place : Composer ne remplace que les paquets changes.
+        Info 'composer.lock a change, mise a jour des dependances'
+        if (-not (Install-Dependances (Join-Path $racine 'app'))) {
+            Echouer "Mise a jour des dependances impossible. Detail : $script:Journal"
+        }
+        Info 'dependances mises a jour'
     } else {
         Info 'paquets deja installes'
     }
+    Copy-Item 'app\composer.lock' $temoinVerrou -Force
 
     Ecrire-SansBom 'app\app\config\parameters.yml' ((@"
 # Genere par sans-docker\demarrer-windows.ps1 : instance MariaDB locale.

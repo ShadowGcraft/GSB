@@ -130,8 +130,15 @@ try {
 
     Etape '6/7' 'Dépendances et fichiers générés'
 
-    if (-not (Test-Path 'app\vendor')) {
-        Info 'installation de Symfony 2.8, comptez plusieurs minutes'
+    # Un vendor installe avant une mise a jour du composer.lock garde les
+    # anciennes versions (Twig 1.35 collait le texte avant chaque {{ }} sous
+    # PHP 7.4). Une copie du composer.lock, deposee dans vendor apres chaque
+    # installation, permet de le reperer.
+    $temoinVerrou = 'app\vendor\.composer.lock.installe'
+    $verrouAJour  = (Test-Path $temoinVerrou) -and
+                    ((Get-FileHash 'app\composer.lock').Hash -eq (Get-FileHash $temoinVerrou).Hash)
+    if (-not (Test-Path 'app\vendor') -or -not $verrouAJour) {
+        Info 'installation ou mise à jour des dépendances, comptez plusieurs minutes'
         # Le squelette Symfony n'est pas versionné en entier : on le réinstalle
         # à côté, puis on ne reprend que ce qui manque.
         Invoke-DansConteneur @'
@@ -144,6 +151,7 @@ fi
 composer install --no-interaction --no-scripts
 '@
         if ($LASTEXITCODE -ne 0) { Echec 'L''installation des dépendances a échoué.'; exit 1 }
+        Copy-Item 'app\composer.lock' $temoinVerrou -Force
     } else {
         Info 'dépendances déjà installées'
     }
