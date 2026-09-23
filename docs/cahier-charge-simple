@@ -1,0 +1,13 @@
+Bouton deco en bas et en rouge
+Corriger "bonjourVisiteur" qui est collé après s'être connecter
+
+La barre "Libellé" depasse quand la fenetre est redimensionner
+
+dans "Renseigner ma fiche de frais du mois" la date est collé a "mois"
+
+Lorsqu'on selectionner un ancien mois : 
+"Etat :Saisie" Saisie est collé,
+"leJJ/MM/AAAA" la date est collé
+"Montant validé :0.00 c'ets collé a ":"
+
+"hors forfait -X justificatifs reçus -" le -X est collé
