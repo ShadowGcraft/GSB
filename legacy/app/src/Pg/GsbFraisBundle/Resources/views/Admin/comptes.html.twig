@@ -1,0 +1,53 @@
+{% extends "PgGsbFraisBundle:Admin:admin.html.twig" %}
+{% block body %}
+{% set jeton = csrf_token('gsb_admin') %}
+<div id="contenu" class="contenu--admin">
+  <h2>Comptes</h2>
+  {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' %}
+
+  <div class="tableau-defilant">
+    <table class="listeLegere">
+      <caption>{{ lescomptes|length }} compte{{ lescomptes|length > 1 ? 's' }}</caption>
+      <tr>
+        <th>Identifiant</th>
+        <th>Nom</th>
+        <th>Login</th>
+        <th>Rôle</th>
+        <th>Statut</th>
+        <th class="action"><span class="visuellement-cache">Actions</span></th>
+      </tr>
+      {% for compte in lescomptes %}
+        <tr{% if not compte.actif %} class="ligne-inactive"{% endif %}>
+          <td>{{ compte.id }}</td>
+          <td>{{ compte.prenom }} {{ compte.nom }}</td>
+          <td>{{ compte.login }}</td>
+          <td>{{ roles[compte.role]|default(compte.role) }}</td>
+          <td><span class="etat etat--{{ compte.actif ? 'actif' : 'inactif' }}">{{ compte.actif ? 'Actif' : 'Désactivé' }}</span></td>
+          <td class="action">
+            <a class="bouton-petit" href="{{ path('pg_gsb_frais_admin_compte', {'id': compte.id}) }}">Modifier</a>
+            {% if compte.id != app.session.get('id') %}
+              <form method="post" action="{{ path('pg_gsb_frais_admin_activer', {'id': compte.id}) }}" class="form-inline"
+                    {% if compte.actif %}onsubmit="return confirm('Désactiver ce compte ? Il ne pourra plus se connecter.');"{% endif %}>
+                <input type="hidden" name="_jeton" value="{{ jeton }}" />
+                <button type="submit" class="bouton-petit{{ compte.actif ? ' bouton-petit--danger' : '' }}">{{ compte.actif ? 'Désactiver' : 'Réactiver' }}</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <form method="post" action="{{ path('pg_gsb_frais_admin_comptes') }}" id="nouveauCompte">
+    <input type="hidden" name="_jeton" value="{{ jeton }}" />
+    {% include 'PgGsbFraisBundle:SaisirFrais:erreurs.html.twig' with {'leserreurs': erreurscreation} %}
+    <div class="corpsForm">
+      <fieldset>
+        <legend>Nouveau compte</legend>
+        {% include 'PgGsbFraisBundle:Admin:_champs_compte.html.twig' with {'compte': nouveau, 'creation': true} %}
+      </fieldset>
+    </div>
+    <div class="piedForm"><p><input type="submit" value="Créer le compte" /></p></div>
+  </form>
+</div>
+{% endblock %}

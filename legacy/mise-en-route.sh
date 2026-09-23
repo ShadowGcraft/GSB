@@ -76,7 +76,8 @@ docker compose exec -T web sh -c '
     # Le lien attendu par les gabarits de 2013 diffère du nom du bundle.
     [ -e web/bundles/gsbfrais ] || ln -s ../../src/Pg/GsbFraisBundle/Resources/public web/bundles/gsbfrais
     rm -rf app/cache/*
-    chmod -R 777 app/cache app/logs 2>/dev/null || true
+    mkdir -p app/justificatifs
+    chmod -R 777 app/cache app/logs app/justificatifs 2>/dev/null || true
 '
 
 echo "==> 6/6  Vérification"
@@ -84,7 +85,7 @@ code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8088/accueil || e
 if [ "$code" = "200" ]; then
     echo
     echo "    L'application répond : http://localhost:8088"
-    echo "    Comptes de démonstration : dandre / oppg5, cbedos / gvide, pbentot / doypa"
+    echo "    Comptes de démonstration : dandre / oppg5, cbedos / gvide, pbentot / doypa, admin / gsbadmin"
     echo "    Mode développement, avec la barre de débogage : http://localhost:8088/app_dev.php/accueil"
 else
     echo "    ÉCHEC : la page d'accueil renvoie $code"

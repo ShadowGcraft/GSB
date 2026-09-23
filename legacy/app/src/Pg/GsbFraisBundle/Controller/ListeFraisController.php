@@ -5,10 +5,11 @@ require_once("include/fct.inc.php");
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Session\Session;
 //use PdoGsb;
-class ListeFraisController extends Controller
+class ListeFraisController extends GsbController
 {
     public function indexAction()
     {
+        if ($refus = $this->exigeRole(self::ROLE_VISITEUR)) return $refus;
         $session= $this->container->get('request')->getSession();
         $idVisiteur =  $session->get('id');
        // $pdo = PdoGsb::getPdoGsb();

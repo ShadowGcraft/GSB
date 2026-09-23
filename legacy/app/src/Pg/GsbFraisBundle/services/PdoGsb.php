@@ -12,8 +12,30 @@ class PdoGsb{
         public function __construct($serveur,$bdd,$user,$mdp){
             PdoGsb::$monPdo = new PDO($serveur.';'.$bdd, $user, $mdp); 
             PdoGsb::$monPdo->query("SET CHARACTER SET utf8");
-               
+            $this->appliqueEvolutions();
 	}
+
+/**
+ * Met à niveau une base installée avant les évolutions 2026
+ *
+ * La table justificatif, créée en dernier, sert de témoin : tant qu'elle
+ * manque, le script Resources/sql/evolutions-2026.sql est rejoué. Toutes ses
+ * instructions sont idempotentes.
+ */
+        private function appliqueEvolutions(){
+                $req = "select count(*) from information_schema.tables
+                        where table_schema = database() and table_name = 'justificatif'";
+                if (PdoGsb::$monPdo->query($req)->fetchColumn() > 0) {
+                        return;
+                }
+                $script = file_get_contents(__DIR__.'/../Resources/sql/evolutions-2026.sql');
+                $script = preg_replace('/^\s*--.*$/m', '', $script);
+                foreach (explode(';', $script) as $instruction) {
+                        if (trim($instruction) !== '') {
+                                PdoGsb::$monPdo->exec($instruction);
+                        }
+                }
+        }
         
 	public function _destruct(){
 		PdoGsb::$monPdo = null;
@@ -38,10 +60,11 @@ class PdoGsb{
  
  * @param $login 
  * @param $mdp
- * @return l'id, le nom et le prénom sous la forme d'un tableau associatif 
+ * @return l'id, le nom, le prénom, le rôle et l'activation sous la forme d'un tableau associatif
 */
 	public function getInfosVisiteur($login, $mdp){
-                $req = "select visiteur.id as id, visiteur.nom as nom, visiteur.prenom as prenom from visiteur 
+                $req = "select visiteur.id as id, visiteur.nom as nom, visiteur.prenom as prenom,
+                visiteur.role as role, visiteur.actif as actif from visiteur
 		where visiteur.login=:log and visiteur.mdp=:md";
 		$stmt = PdoGsb::$monPdo->prepare($req);
                 $stmt->bindParam(':log', $login);
@@ -75,8 +98,9 @@ class PdoGsb{
 		for ($i=0; $i<$nbLignes; $i++){
 			$date = $lesLignes[$i]['date'];
 			$lesLignes[$i]['date'] =  dateAnglaisVersFrancais($date);
+			$lesLignes[$i]['justificatifs'] = $this->getLesJustificatifs($lesLignes[$i]['id']);
 		}
-		return $lesLignes; 
+		return $lesLignes;
 	}
 /**
  * Retourne le nombre de justificatif d'un visiteur pour un mois donné
@@ -103,8 +127,9 @@ class PdoGsb{
  * @return l'id, le libelle et la quantité sous la forme d'un tableau associatif 
 */
 	public function getLesFraisForfait($idVisiteur, $mois){
-		$req = "select fraisforfait.id as idfrais, fraisforfait.libelle as libelle, 
-		lignefraisforfait.quantite as quantite from lignefraisforfait inner join fraisforfait 
+		$req = "select fraisforfait.id as idfrais, fraisforfait.libelle as libelle,
+		fraisforfait.montant as montant, fraisforfait.description as description, fraisforfait.unite as unite,
+		lignefraisforfait.quantite as quantite from lignefraisforfait inner join fraisforfait
 		on fraisforfait.id = lignefraisforfait.idfraisforfait
 		where lignefraisforfait.idvisiteur = :idVisiteur and lignefraisforfait.mois= :mois 
 		order by lignefraisforfait.idfraisforfait";	
@@ -218,7 +243,8 @@ class PdoGsb{
         public function creeNouvellesLignesFrais($idVisiteur,$mois){
                 $dernierMois = $this->dernierMoisSaisi($idVisiteur);
                 $laDerniereFiche = $this->getLesInfosFicheFrais($idVisiteur,$dernierMois);
-                if($laDerniereFiche['idEtat']=='CR'){
+                // Un visiteur tout juste créé n'a encore aucune fiche à clôturer.
+                if($laDerniereFiche && $laDerniereFiche['idEtat']=='CR'){
                                 $this->majEtatFicheFrais($idVisiteur, $dernierMois,'CL');
 
                 }
@@ -249,17 +275,20 @@ class PdoGsb{
  * @param $libelle : le libelle du frais
  * @param $date : la date du frais au format français jj//mm/aaaa
  * @param $montant : le montant
+ * @return l'id du frais créé
 */
         public function creeNouveauFraisHorsForfait($idVisiteur,$mois,$libelle,$date,$montant){
                 $dateFr = dateFrancaisVersAnglais($date);
-                $req = "insert into lignefraishorsforfait 
-                values('',:idVisiteur,:mois,:libelle,'$dateFr',:montant)";
+                $req = "insert into lignefraishorsforfait (idVisiteur, mois, libelle, date, montant)
+                values(:idVisiteur,:mois,:libelle,:date,:montant)";
                 $stmt = PdoGsb::$monPdo->prepare($req);
                 $stmt->bindParam(':idVisiteur', $idVisiteur);
                 $stmt->bindParam(':mois', $mois);
                 $stmt->bindParam(':libelle', $libelle);
+                $stmt->bindParam(':date', $dateFr);
                 $stmt->bindParam(':montant', $montant);
                 $stmt->execute();
+                return (int) PdoGsb::$monPdo->lastInsertId();
         }
 /**
  * Supprime le frais hors forfait dont l'id est passé en argument
@@ -387,6 +416,255 @@ class PdoGsb{
             $ligne = $stmt->fetch();
             return $ligne['nb'];
 
+        }
+
+/* ---------------------------------------------------------------------------
+ * Ajouts 2026 : saisie par jour, pièces jointes, administration.
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Ajoute une quantité au total mensuel d'un frais forfaitisé
+ *
+ * Le jour choisi à la saisie n'est pas conservé : la fiche reste mensuelle.
+ * @param $idVisiteur
+ * @param $mois sous la forme aaaamm
+ * @param $idFrais
+ * @param $quantite entier positif
+ */
+        public function ajouteQuantiteFraisForfait($idVisiteur, $mois, $idFrais, $quantite){
+                $req = "update lignefraisforfait set quantite = quantite + :quantite
+                        where idvisiteur = :idVisiteur and mois = :mois and idfraisforfait = :idFrais";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindValue(':quantite', (int) $quantite, PDO::PARAM_INT);
+                $stmt->bindParam(':idVisiteur', $idVisiteur);
+                $stmt->bindParam(':mois', $mois);
+                $stmt->bindParam(':idFrais', $idFrais);
+                $stmt->execute();
+                return $stmt->rowCount() > 0;
+        }
+
+/**
+ * Retourne un frais hors forfait, avec le visiteur et le mois de sa fiche
+ * @param $idFrais
+ * @return la ligne, ou false
+ */
+        public function getUnFraisHorsForfait($idFrais){
+                $req = "select * from lignefraishorsforfait where id = :idFrais";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':idFrais', $idFrais);
+                $stmt->execute();
+                return $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Retourne les pièces jointes d'un frais hors forfait
+ * @param $idFrais
+ * @return un tableau associatif : id, nomOriginal, nomStocke, typeMime, taille, dateAjout
+ */
+        public function getLesJustificatifs($idFrais){
+                $req = "select * from justificatif where idFraisHorsForfait = :idFrais order by id";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':idFrais', $idFrais);
+                $stmt->execute();
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Retourne une pièce jointe, avec le visiteur et le mois du frais qui la porte
+ * @param $idJustificatif
+ * @return la ligne, ou false
+ */
+        public function getUnJustificatif($idJustificatif){
+                $req = "select justificatif.*, lignefraishorsforfait.idVisiteur as idVisiteur,
+                        lignefraishorsforfait.mois as mois
+                        from justificatif inner join lignefraishorsforfait
+                        on lignefraishorsforfait.id = justificatif.idFraisHorsForfait
+                        where justificatif.id = :id";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':id', $idJustificatif);
+                $stmt->execute();
+                return $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Enregistre une pièce jointe déjà rangée sur le disque
+ */
+        public function ajouteJustificatif($idFrais, $nomOriginal, $nomStocke, $typeMime, $taille){
+                $req = "insert into justificatif (idFraisHorsForfait, nomOriginal, nomStocke, typeMime, taille, dateAjout)
+                        values (:idFrais, :nomOriginal, :nomStocke, :typeMime, :taille, now())";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':idFrais', $idFrais);
+                $stmt->bindParam(':nomOriginal', $nomOriginal);
+                $stmt->bindParam(':nomStocke', $nomStocke);
+                $stmt->bindParam(':typeMime', $typeMime);
+                $stmt->bindValue(':taille', (int) $taille, PDO::PARAM_INT);
+                $stmt->execute();
+        }
+
+        public function supprimeJustificatif($idJustificatif){
+                $stmt = PdoGsb::$monPdo->prepare("delete from justificatif where id = :id");
+                $stmt->bindParam(':id', $idJustificatif);
+                $stmt->execute();
+        }
+
+/**
+ * Recalcule le nombre de justificatifs d'une fiche : celui des pièces jointes
+ * @param $idVisiteur
+ * @param $mois sous la forme aaaamm
+ */
+        public function recalculeNbJustificatifs($idVisiteur, $mois){
+                $req = "select count(*) from justificatif inner join lignefraishorsforfait
+                        on lignefraishorsforfait.id = justificatif.idFraisHorsForfait
+                        where lignefraishorsforfait.idvisiteur = :idVisiteur and lignefraishorsforfait.mois = :mois";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':idVisiteur', $idVisiteur);
+                $stmt->bindParam(':mois', $mois);
+                $stmt->execute();
+                $this->majNbJustificatifs($idVisiteur, $mois, (int) $stmt->fetchColumn());
+        }
+
+/**
+ * Retourne les fiches de tous les visiteurs, les plus récentes d'abord
+ * @param $idEtat filtre facultatif sur l'état
+ * @return un tableau associatif : idVisiteur, nom, prenom, mois, idEtat, libEtat,
+ *         nbJustificatifs, montantValide, dateModif
+ */
+        public function getLesFichesDesVisiteurs($idEtat = null){
+                $req = "select fichefrais.idVisiteur as idVisiteur, visiteur.nom as nom, visiteur.prenom as prenom,
+                        fichefrais.mois as mois, fichefrais.idEtat as idEtat, etat.libelle as libEtat,
+                        fichefrais.nbJustificatifs as nbJustificatifs, fichefrais.montantValide as montantValide,
+                        fichefrais.dateModif as dateModif
+                        from fichefrais
+                        inner join visiteur on visiteur.id = fichefrais.idVisiteur
+                        inner join etat on etat.id = fichefrais.idEtat";
+                if ($idEtat !== null) {
+                        $req .= " where fichefrais.idEtat = :idEtat";
+                }
+                $req .= " order by fichefrais.mois desc, visiteur.nom, visiteur.prenom";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                if ($idEtat !== null) {
+                        $stmt->bindParam(':idEtat', $idEtat);
+                }
+                $stmt->execute();
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Montant dû pour une fiche : forfaits au tarif du référentiel, plus les
+ * frais hors forfait non refusés
+ */
+        public function getMontantCalcule($idVisiteur, $mois){
+                $req = "select
+                          (select coalesce(sum(lignefraisforfait.quantite * fraisforfait.montant), 0)
+                           from lignefraisforfait inner join fraisforfait on fraisforfait.id = lignefraisforfait.idfraisforfait
+                           where lignefraisforfait.idvisiteur = :v1 and lignefraisforfait.mois = :m1)
+                        + (select coalesce(sum(montant), 0) from lignefraishorsforfait
+                           where idvisiteur = :v2 and mois = :m2 and refuse = 0)";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':v1', $idVisiteur);
+                $stmt->bindParam(':m1', $mois);
+                $stmt->bindParam(':v2', $idVisiteur);
+                $stmt->bindParam(':m2', $mois);
+                $stmt->execute();
+                return number_format((float) $stmt->fetchColumn(), 2, '.', '');
+        }
+
+        public function majMontantValide($idVisiteur, $mois, $montant){
+                $req = "update fichefrais set montantValide = :montant
+                        where idvisiteur = :idVisiteur and mois = :mois";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':montant', $montant);
+                $stmt->bindParam(':idVisiteur', $idVisiteur);
+                $stmt->bindParam(':mois', $mois);
+                $stmt->execute();
+        }
+
+        public function majRefusFraisHorsForfait($idFrais, $refuse){
+                $stmt = PdoGsb::$monPdo->prepare("update lignefraishorsforfait set refuse = :refuse where id = :id");
+                $stmt->bindValue(':refuse', $refuse ? 1 : 0, PDO::PARAM_INT);
+                $stmt->bindParam(':id', $idFrais);
+                $stmt->execute();
+        }
+
+/**
+ * Gestion des comptes, réservée à l'administrateur
+ */
+        public function getLesComptes(){
+                $req = "select id, nom, prenom, login, role, actif from visiteur order by role, nom, prenom";
+                return PdoGsb::$monPdo->query($req)->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        public function getUnCompte($id){
+                $stmt = PdoGsb::$monPdo->prepare("select id, nom, prenom, login, role, actif from visiteur where id = :id");
+                $stmt->bindParam(':id', $id);
+                $stmt->execute();
+                return $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+        public function existeLogin($login, $saufId = null){
+                $stmt = PdoGsb::$monPdo->prepare("select count(*) from visiteur where login = :login and id <> :saufId");
+                $stmt->bindParam(':login', $login);
+                $stmt->bindValue(':saufId', (string) $saufId);
+                $stmt->execute();
+                return $stmt->fetchColumn() > 0;
+        }
+
+/**
+ * Crée un compte. L'identifiant suit le modèle de 2013 : l'initiale du nom
+ * suivie d'un numéro, sur quatre caractères au plus.
+ * @return l'identifiant attribué
+ */
+        public function creeCompte($nom, $prenom, $login, $mdp, $role){
+                $initiale = strtolower(substr(preg_replace('/[^A-Za-z]/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $nom)), 0, 1));
+                if ($initiale === '') {
+                        $initiale = 'v';
+                }
+                $verif = PdoGsb::$monPdo->prepare("select count(*) from visiteur where id = :id");
+                for ($n = 1; $n <= 999; $n++) {
+                        $id = $initiale.$n;
+                        $verif->bindParam(':id', $id);
+                        $verif->execute();
+                        if ($verif->fetchColumn() == 0) {
+                                break;
+                        }
+                }
+                $req = "insert into visiteur (id, nom, prenom, login, mdp, role, actif)
+                        values (:id, :nom, :prenom, :login, :mdp, :role, 1)";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':id', $id);
+                $stmt->bindParam(':nom', $nom);
+                $stmt->bindParam(':prenom', $prenom);
+                $stmt->bindParam(':login', $login);
+                $stmt->bindParam(':mdp', $mdp);
+                $stmt->bindParam(':role', $role);
+                $stmt->execute();
+                return $id;
+        }
+
+/**
+ * Modifie un compte. Un mot de passe vide laisse l'ancien en place.
+ */
+        public function majCompte($id, $nom, $prenom, $login, $mdp, $role){
+                $req = "update visiteur set nom = :nom, prenom = :prenom, login = :login, role = :role"
+                     . ($mdp !== '' ? ", mdp = :mdp" : "")
+                     . " where id = :id";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':nom', $nom);
+                $stmt->bindParam(':prenom', $prenom);
+                $stmt->bindParam(':login', $login);
+                $stmt->bindParam(':role', $role);
+                if ($mdp !== '') {
+                        $stmt->bindParam(':mdp', $mdp);
+                }
+                $stmt->bindParam(':id', $id);
+                $stmt->execute();
+        }
+
+        public function majActivationCompte($id, $actif){
+                $stmt = PdoGsb::$monPdo->prepare("update visiteur set actif = :actif where id = :id");
+                $stmt->bindValue(':actif', $actif ? 1 : 0, PDO::PARAM_INT);
+                $stmt->bindParam(':id', $id);
+                $stmt->execute();
         }
 }
 ?>

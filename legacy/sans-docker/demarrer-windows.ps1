@@ -195,6 +195,8 @@ try {
     )
     $lignes += ($activees | ForEach-Object { "extension=$_" })
     $lignes += @('date.timezone = Europe/Paris', 'memory_limit = 512M')
+    # Pieces jointes des frais hors forfait : 5 Mo par fichier, plusieurs par envoi.
+    $lignes += @('upload_max_filesize = 6M', 'post_max_size = 32M')
 
     # OPcache est INDISPENSABLE au mode developpement. Sous PHP 7.4, compiler
     # Doctrine\ORM\UnitOfWork emet l'avertissement « continue targeting
@@ -998,6 +1000,7 @@ parameters:
         Write-Host '      dandre  / oppg5    David André, quatre fiches, tous les états'
         Write-Host '      cbedos  / gvide    Christian Bedos, trois fiches'
         Write-Host '      pbentot / doypa    Pascal Bentot, une seule fiche'
+        Write-Host '      admin   / gsbadmin Administrateur : validation des fiches, comptes'
         Write-Host ''
         Write-Host '    Pour arrêter :  .\sans-docker\arreter-windows.ps1'
         Write-Host ''

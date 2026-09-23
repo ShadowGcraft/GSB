@@ -175,7 +175,8 @@ php vendor/sensio/distribution-bundle/Sensio/Bundle/DistributionBundle/Resources
 php app/console assets:install web --symlink --env=prod --no-debug --quiet
 [ -e web/bundles/gsbfrais ] || ln -s ../../src/Pg/GsbFraisBundle/Resources/public web/bundles/gsbfrais
 rm -rf app/cache/*
-chmod -R 777 app/cache app/logs 2>/dev/null || true
+mkdir -p app/justificatifs
+chmod -R 777 app/cache app/logs app/justificatifs 2>/dev/null || true
 '@
     Info 'paramètres, amorçage et ressources en place'
 
@@ -203,6 +204,7 @@ chmod -R 777 app/cache app/logs 2>/dev/null || true
         Write-Host '      dandre  / oppg5    David André, quatre fiches, tous les états'
         Write-Host '      cbedos  / gvide    Christian Bedos, trois fiches'
         Write-Host '      pbentot / doypa    Pascal Bentot, une seule fiche'
+        Write-Host '      admin   / gsbadmin Administrateur : validation des fiches, comptes'
         Write-Host ''
         Write-Host "    Mode développement : $adresse/app_dev.php/accueil"
         Write-Host '    Pour arrêter : docker compose down'

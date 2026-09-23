@@ -1,23 +1,98 @@
 <div id="contenu">
   <h2>Renseigner ma fiche de frais du mois {{ nummois }}/{{ numannee }}</h2>
-  <form action="{{ path('pg_gsb_frais_saisirfrais') }}" method="POST">
+  {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' with {'leserreurs': leserreursforfait, 'lessucces': lessuccesforfait} %}
+
+  {# Saisie guidée : le jour d'abord, puis le type de frais, puis la quantité.
+     Sans JavaScript, les trois champs sont simplement tous actifs. #}
+  <form action="{{ path('pg_gsb_frais_ajouterfraisforfait') }}" method="POST" id="saisieGuidee">
     <div class="corpsForm">
       <fieldset>
-        <legend>Éléments forfaitisés</legend>
-        {% for unfrais in lesfraisforfait %}
-          <p>
-            <label for="frais-{{ unfrais.idfrais }}">{{ unfrais.libelle }}</label>
-            <input type="text" id="frais-{{ unfrais.idfrais }}" name="lesFrais[{{ unfrais.idfrais }}]"
-                   size="10" maxlength="5" inputmode="numeric" value="{{ unfrais.quantite }}" />
-          </p>
-        {% endfor %}
+        <legend>Ajouter un frais forfaitisé</legend>
+        <ol class="etapes">
+          <li class="etape">
+            <label for="jour"><span class="etape__num" aria-hidden="true">1</span> Jour du frais</label>
+            <input type="date" id="jour" name="jour" required
+                   min="{{ premierjour }}" max="{{ aujourdhui }}" />
+          </li>
+          <li class="etape" data-etape="type">
+            <div class="etape__titre">
+              <label for="idFrais"><span class="etape__num" aria-hidden="true">2</span> Type de frais</label>
+              <button type="button" class="aide__bouton" id="aideBouton"
+                      aria-expanded="false" aria-controls="aidePanneau" title="Plus d'informations sur les types de frais">
+                ?<span class="visuellement-cache"> Plus d'informations sur les types de frais</span>
+              </button>
+            </div>
+            <div class="aide__panneau" id="aidePanneau" hidden>
+              <dl>
+                {% for unfrais in lesfraisforfait %}
+                  <div class="aide__item" data-frais="{{ unfrais.idfrais }}">
+                    <dt>{{ unfrais.libelle }} <span class="aide__tarif">{{ unfrais.montant|number_format(2, ',', ' ') }} € par {{ unfrais.unite|default('unité')|replace({'(s)': ''}) }}</span></dt>
+                    <dd>{{ unfrais.description }}</dd>
+                  </div>
+                {% endfor %}
+              </dl>
+            </div>
+            <select id="idFrais" name="idFrais" required>
+              <option value="">— Choisir —</option>
+              {% for unfrais in lesfraisforfait %}
+                <option value="{{ unfrais.idfrais }}" data-unite="{{ unfrais.unite }}">{{ unfrais.libelle }}</option>
+              {% endfor %}
+            </select>
+          </li>
+          <li class="etape" data-etape="quantite">
+            <label for="quantite"><span class="etape__num" aria-hidden="true">3</span> Quantité</label>
+            <span class="champ-unite">
+              <input type="text" id="quantite" name="quantite" size="6" maxlength="5"
+                     inputmode="numeric" pattern="[0-9]*" required />
+              <span id="unite" class="unite"></span>
+            </span>
+          </li>
+        </ol>
       </fieldset>
     </div>
     <div class="piedForm">
-      <p>
-        <input id="ok" type="submit" value="Valider" />
-        <input id="annuler" type="reset" value="Effacer" />
-      </p>
+      <p><input id="ajouterForfait" type="submit" value="Ajouter au mois" /></p>
     </div>
   </form>
+
+  <div class="tableau-defilant">
+    <table class="listeLegere recap">
+      <caption>Totaux du mois</caption>
+      <tr>
+        <th>Type de frais</th>
+        <th class="montant">Quantité</th>
+      </tr>
+      {% for unfrais in lesfraisforfait %}
+        <tr>
+          <td>{{ unfrais.libelle }}</td>
+          <td class="montant">{{ unfrais.quantite }} {{ unfrais.unite }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  {# Le formulaire de 2013, pour corriger une erreur de saisie. #}
+  <details class="correction">
+    <summary>Corriger les totaux du mois</summary>
+    <form action="{{ path('pg_gsb_frais_saisirfrais') }}" method="POST">
+      <div class="corpsForm">
+        <fieldset>
+          <legend>Totaux du mois</legend>
+          {% for unfrais in lesfraisforfait %}
+            <p>
+              <label for="frais-{{ unfrais.idfrais }}">{{ unfrais.libelle }}</label>
+              <input type="text" id="frais-{{ unfrais.idfrais }}" name="lesFrais[{{ unfrais.idfrais }}]"
+                     size="10" maxlength="5" inputmode="numeric" value="{{ unfrais.quantite }}" />
+            </p>
+          {% endfor %}
+        </fieldset>
+      </div>
+      <div class="piedForm">
+        <p>
+          <input id="ok" type="submit" value="Enregistrer les totaux" />
+          <input id="annuler" type="reset" value="Effacer" />
+        </p>
+      </div>
+    </form>
+  </details>
 </div>

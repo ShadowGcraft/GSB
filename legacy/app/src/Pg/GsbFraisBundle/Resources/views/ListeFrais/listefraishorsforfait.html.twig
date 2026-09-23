@@ -5,15 +5,23 @@
       <th class="date">Date</th>
       <th class="libelle">Libellé</th>
       <th class="montant">Montant</th>
+      <th class="pj">Pièces jointes</th>
     </tr>
     {% for unFrais in lesfraishorsforfait %}
-      <tr>
-        <td>{{ unFrais.date }}</td>
-        <td>{{ unFrais.libelle }}</td>
+      <tr{% if unFrais.refuse %} class="ligne-refusee"{% endif %}>
+        <td class="date">{{ unFrais.date }}</td>
+        <td>{{ unFrais.libelle }}{% if unFrais.refuse %} <span class="etiquette-refus">Refusé</span>{% endif %}</td>
         <td class="montant">{{ unFrais.montant }} €</td>
+        <td class="pj">
+          {% for pj in unFrais.justificatifs %}
+            <a href="{{ path('pg_gsb_frais_justificatif_voir', {'id': pj.id}) }}" target="_blank" rel="noopener">{{ pj.nomOriginal }}</a>{% if not loop.last %}<br />{% endif %}
+          {% else %}
+            <span class="vide">Aucune</span>
+          {% endfor %}
+        </td>
       </tr>
     {% else %}
-      <tr><td colspan="3" class="vide">Aucun frais hors forfait ce mois-ci.</td></tr>
+      <tr><td colspan="4" class="vide">Aucun frais hors forfait ce mois-ci.</td></tr>
     {% endfor %}
   </table>
 </div>

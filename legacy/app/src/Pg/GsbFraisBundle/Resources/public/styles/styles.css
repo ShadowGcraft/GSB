@@ -262,7 +262,7 @@ legend { padding: 0 8px; font-weight: 700; color: var(--gsb-accent); }
   margin: 10px 0;
 }
 label { flex: 0 0 180px; }
-input[type=text], input[type=password], select {
+input[type=text], input[type=password], input[type=date], select {
   max-width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
@@ -271,7 +271,8 @@ input[type=text], input[type=password], select {
   color: #1A1A1A;
   font: inherit;
 }
-input[type=text]:focus, input[type=password]:focus { border-color: var(--gsb-accent); outline: none; }
+input[type=text]:focus, input[type=password]:focus, input[type=date]:focus, select:focus { border-color: var(--gsb-accent); outline: none; }
+input:disabled, select:disabled { opacity: .45; cursor: not-allowed; }
 /* Le champ Libellé ne déborde plus quand la fenêtre rétrécit (cahier-charge-simple). */
 .champ-large { flex: 1 1 260px; width: 100%; min-width: 0; }
 
@@ -359,6 +360,148 @@ input[type=reset]  { background: transparent; color: var(--gsb-ink); }
 }
 #contenu .gsb-detail > h3:first-child { margin-top: 0; }
 .gsb-empty { font-size: 18px; }
+
+/* --- messages, boutons secondaires ------------------------------------------- */
+
+.succes {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .22);
+  border-left: 6px solid #7BE0A4;
+}
+.succes ul { margin: 0; padding-left: 18px; }
+input[type=submit]:disabled { opacity: .45; cursor: not-allowed; }
+.bouton-petit {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 2px solid var(--gsb-accent);
+  background: transparent;
+  color: var(--gsb-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bouton-petit:hover { background: rgba(255, 255, 255, .1); }
+.bouton-petit--danger { border-color: var(--gsb-danger); }
+.bouton-lien {
+  border: 0; padding: 0 4px; background: none;
+  color: var(--gsb-card-ink); font: inherit; font-weight: 700; cursor: pointer;
+}
+.form-inline { display: inline; margin: 0; }
+.aide-texte { font-size: 14px; opacity: .8; }
+.fil { margin: 0 0 8px; font-size: 14px; }
+.fil a { color: inherit; }
+
+/* --- saisie guidée des forfaits : jour, type, quantité ----------------------- */
+
+.etapes { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.etape { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; transition: opacity .15s; }
+.etape label { flex: none; font-weight: 700; }
+.etape--attente { opacity: .55; }
+.etape__titre { display: flex; align-items: center; gap: 10px; }
+.etape__num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; margin-right: 4px; border-radius: 50%;
+  background: var(--gsb-accent); color: var(--gsb-accent-ink); font-size: 13px;
+}
+.aide__bouton {
+  width: 24px; height: 24px; padding: 0;
+  border-radius: 50%; border: 2px solid var(--gsb-accent);
+  background: transparent; color: var(--gsb-accent);
+  font: inherit; font-weight: 700; font-size: 14px; line-height: 1; cursor: pointer;
+}
+.aide__bouton[aria-expanded="true"] { background: var(--gsb-accent); color: var(--gsb-accent-ink); }
+.aide__panneau {
+  max-width: 520px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .22);
+  font-size: 14px;
+}
+.aide__panneau dl { margin: 0; }
+.aide__item { padding: 6px 8px; border-radius: 6px; }
+.aide__item dt { font-weight: 700; }
+.aide__item dd { margin: 2px 0 0; opacity: .9; }
+.aide__item--choisi { background: rgba(242, 201, 76, .18); }
+.aide__tarif { font-weight: 400; opacity: .8; margin-left: 6px; }
+.champ-unite { display: inline-flex; align-items: center; gap: 10px; }
+.unite { opacity: .85; }
+.recap { max-width: 460px; }
+
+details.correction { margin-top: 8px; }
+details.correction summary { cursor: pointer; font-weight: 700; color: var(--gsb-card-ink); }
+details.correction[open] summary { margin-bottom: 10px; }
+
+/* --- pièces jointes ------------------------------------------------------------ */
+
+.listeLegere .pj { min-width: 180px; }
+.liste-pj { list-style: none; margin: 0 0 6px; padding: 0; }
+.liste-pj li { display: flex; align-items: center; gap: 4px; }
+.pj a { color: var(--gsb-card-ink); overflow-wrap: anywhere; }
+.ajout-pj { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
+.listeLegere .date { white-space: nowrap; }
+.ajout-pj label { flex: none; position: relative; }
+/* Le champ fichier reste focalisable au clavier, mais c'est le bouton qui se voit. */
+.ajout-pj input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.ajout-pj label:focus-within .bouton-petit { outline: 3px solid #FFFFFF; outline-offset: 2px; }
+.js .ajout-pj__envoi { display: none; }
+.champ-fichier { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.champ-fichier small { opacity: .8; }
+input[type=file] { max-width: 100%; font: inherit; color: inherit; }
+input[type=file]::file-selector-button {
+  margin-right: 10px; padding: 6px 12px; border-radius: 999px;
+  border: 2px solid var(--gsb-accent); background: transparent; color: inherit;
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+
+.ligne-refusee td { opacity: .6; text-decoration: line-through; }
+.ligne-refusee td.pj, .ligne-refusee td.action { text-decoration: none; }
+.etiquette-refus, .etat {
+  display: inline-block; padding: 1px 8px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  text-decoration: none;
+}
+.etiquette-refus { background: var(--gsb-danger); color: #FFFFFF; }
+.etat { background: rgba(255, 255, 255, .14); }
+.etat--cl { background: var(--gsb-accent); color: var(--gsb-accent-ink); }
+.etat--inactif { background: var(--gsb-danger); color: #FFFFFF; }
+.ligne-inactive td { opacity: .65; }
+.ligne-inactive td.action { opacity: 1; }
+.listeLegere .action .bouton-petit + .form-inline { margin-left: 6px; }
+
+/* --- espace administrateur : vert sapin et or --------------------------------- */
+
+body.gsb-admin {
+  --gsb-bg: #1E5A45;
+  --gsb-header: #0E3A2B;
+  --gsb-accent: #E8BE4F;
+  --gsb-card-ink: #FFE7A8;
+  --gsb-card-fill: #7C5A12;
+  --gsb-deco: #CFEBDB;
+  --gsb-deco-opacity: 0.22;
+  --gsb-panel: rgba(6, 38, 28, 0.55);
+  --gsb-panel-line: rgba(207, 235, 219, 0.26);
+}
+body.gsb-admin .smenu a[aria-current="page"] { background: rgba(232, 190, 79, .2); }
+.badge-statut {
+  padding: 4px 12px; border-radius: 999px;
+  background: var(--gsb-accent); color: var(--gsb-accent-ink);
+  font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+}
+.gsb-admin #entete h1 { margin-left: auto; }
+#contenu.contenu--admin { max-width: 1000px; }
+.filtres { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.filtres a {
+  display: block; padding: 6px 14px; border-radius: 999px;
+  border: 1px solid var(--gsb-panel-line); color: inherit; text-decoration: none; font-size: 14px;
+}
+.filtres a:hover { background: rgba(255, 255, 255, .08); }
+.filtres a[aria-current="page"] { background: var(--gsb-accent); border-color: var(--gsb-accent); color: var(--gsb-accent-ink); font-weight: 700; }
 
 @media (prefers-reduced-motion: reduce) {
   .fiche { transition: none; }

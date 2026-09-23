@@ -5,6 +5,8 @@
 /app/logs/*
 !app/cache/.gitkeep
 !app/logs/.gitkeep
+/app/justificatifs/*
+!app/justificatifs/.gitkeep
 /app/phpunit.xml
 /build/
 /vendor/

@@ -1,0 +1,18 @@
+{% extends "PgGsbFraisBundle:Admin:admin.html.twig" %}
+{% block body %}
+<div id="contenu" class="contenu--admin">
+  <p class="fil"><a href="{{ path('pg_gsb_frais_admin_comptes') }}">← Comptes</a></p>
+  <h2>Modifier le compte {{ compte.id }}</h2>
+  {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' %}
+  <form method="post" action="{{ path('pg_gsb_frais_admin_compte', {'id': compte.id}) }}">
+    <input type="hidden" name="_jeton" value="{{ csrf_token('gsb_admin') }}" />
+    <div class="corpsForm">
+      <fieldset>
+        <legend>{{ compte.prenom }} {{ compte.nom }}</legend>
+        {% include 'PgGsbFraisBundle:Admin:_champs_compte.html.twig' with {'creation': false} %}
+      </fieldset>
+    </div>
+    <div class="piedForm"><p><input type="submit" value="Enregistrer" /></p></div>
+  </form>
+</div>
+{% endblock %}

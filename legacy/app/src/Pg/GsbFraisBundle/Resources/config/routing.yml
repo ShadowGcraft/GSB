@@ -19,3 +19,56 @@ pg_gsb_frais_validerfraishorsforfais:
 pg_gsb_frais_supprimerfraishorsforfait:
     pattern:  /supprimerfraishorsforfait/{id}
     defaults: { _controller: PgGsbFraisBundle:SaisirFrais:supprimerfraishorsforfait }
+
+# --- Ajouts 2026 -------------------------------------------------------------
+pg_gsb_frais_ajouterfraisforfait:
+    pattern:  /ajouterfraisforfait
+    defaults: { _controller: PgGsbFraisBundle:SaisirFrais:ajouterfraisforfait }
+    methods:  [POST]
+pg_gsb_frais_justificatif_voir:
+    pattern:  /justificatif/{id}
+    defaults: { _controller: PgGsbFraisBundle:Justificatif:voir }
+    requirements: { id: '\d+' }
+pg_gsb_frais_justificatif_ajouter:
+    pattern:  /fraishorsforfait/{id}/justificatifs
+    defaults: { _controller: PgGsbFraisBundle:Justificatif:ajouter }
+    requirements: { id: '\d+' }
+    methods:  [POST]
+pg_gsb_frais_justificatif_supprimer:
+    pattern:  /justificatif/{id}/supprimer
+    defaults: { _controller: PgGsbFraisBundle:Justificatif:supprimer }
+    requirements: { id: '\d+' }
+    methods:  [POST]
+
+pg_gsb_frais_admin_fiches:
+    pattern:  /admin/fiches
+    defaults: { _controller: PgGsbFraisBundle:Admin:fiches }
+pg_gsb_frais_admin_fiche:
+    pattern:  /admin/fiche/{idVisiteur}/{mois}
+    defaults: { _controller: PgGsbFraisBundle:Admin:fiche }
+    requirements: { mois: '\d{6}' }
+pg_gsb_frais_admin_valider:
+    pattern:  /admin/fiche/{idVisiteur}/{mois}/valider
+    defaults: { _controller: PgGsbFraisBundle:Admin:validerFiche }
+    requirements: { mois: '\d{6}' }
+    methods:  [POST]
+pg_gsb_frais_admin_rembourser:
+    pattern:  /admin/fiche/{idVisiteur}/{mois}/rembourser
+    defaults: { _controller: PgGsbFraisBundle:Admin:rembourserFiche }
+    requirements: { mois: '\d{6}' }
+    methods:  [POST]
+pg_gsb_frais_admin_refuserfrais:
+    pattern:  /admin/fraishorsforfait/{id}/refuser
+    defaults: { _controller: PgGsbFraisBundle:Admin:refuserFrais }
+    requirements: { id: '\d+' }
+    methods:  [POST]
+pg_gsb_frais_admin_comptes:
+    pattern:  /admin/comptes
+    defaults: { _controller: PgGsbFraisBundle:Admin:comptes }
+pg_gsb_frais_admin_compte:
+    pattern:  /admin/compte/{id}
+    defaults: { _controller: PgGsbFraisBundle:Admin:modifierCompte }
+pg_gsb_frais_admin_activer:
+    pattern:  /admin/compte/{id}/activer
+    defaults: { _controller: PgGsbFraisBundle:Admin:activerCompte }
+    methods:  [POST]

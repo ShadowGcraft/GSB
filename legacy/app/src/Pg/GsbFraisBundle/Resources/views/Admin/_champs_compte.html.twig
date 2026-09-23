@@ -1,0 +1,26 @@
+<p>
+  <label for="nom">Nom</label>
+  <input type="text" id="nom" name="nom" maxlength="30" required value="{{ compte.nom }}" />
+</p>
+<p>
+  <label for="prenom">Prénom</label>
+  <input type="text" id="prenom" name="prenom" maxlength="30" required value="{{ compte.prenom }}" />
+</p>
+<p>
+  <label for="login">Login</label>
+  <input type="text" id="login" name="login" maxlength="45" required autocomplete="off"
+         pattern="[A-Za-z0-9._\-]{3,45}" value="{{ compte.login }}" />
+</p>
+<p>
+  <label for="mdp">Mot de passe</label>
+  <input type="password" id="mdp" name="mdp" maxlength="45" autocomplete="new-password"
+         {% if creation %}required minlength="5"{% else %}placeholder="Inchangé si vide"{% endif %} />
+</p>
+<p>
+  <label for="role">Rôle</label>
+  <select id="role" name="role">
+    {% for code, libelle in roles %}
+      <option value="{{ code }}"{% if compte.role == code %} selected{% endif %}>{{ libelle }}</option>
+    {% endfor %}
+  </select>
+</p>

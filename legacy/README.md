@@ -38,6 +38,10 @@ Puis ouvrir <http://localhost:8088>.
 | David André | `dandre` | `oppg5` |
 | Christian Bedos | `cbedos` | `gvide` |
 | Pascal Bentot | `pbentot` | `doypa` |
+| Administrateur | `admin` | `gsbadmin` |
+
+Le compte administrateur, ajouté en 2026, valide les fiches clôturées et gère
+les comptes, dans une interface aux couleurs vert sapin et or.
 
 Le mode développement, avec la barre de débogage Symfony, est sur
 <http://localhost:8088/app_dev.php/accueil>.

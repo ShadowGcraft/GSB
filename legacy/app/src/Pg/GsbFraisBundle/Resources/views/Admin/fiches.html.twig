@@ -1,0 +1,42 @@
+{% extends "PgGsbFraisBundle:Admin:admin.html.twig" %}
+{% block body %}
+{% set filtres = { 'CL': 'À valider', 'VA': 'Validées', 'RB': 'Remboursées', 'CR': 'En cours de saisie', 'tous': 'Toutes' } %}
+<div id="contenu" class="contenu--admin">
+  <h2>Fiches de frais</h2>
+  {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' %}
+
+  <ul class="filtres" aria-label="Filtrer par état">
+    {% for code, libelle in filtres %}
+      <li><a href="{{ path('pg_gsb_frais_admin_fiches', {'etat': code}) }}"{% if etat == code %} aria-current="page"{% endif %}>{{ libelle }}</a></li>
+    {% endfor %}
+  </ul>
+
+  <div class="tableau-defilant">
+    <table class="listeLegere">
+      <caption>{{ filtres[etat] }} · {{ lesfiches|length }} fiche{{ lesfiches|length > 1 ? 's' }}</caption>
+      <tr>
+        <th>Visiteur</th>
+        <th>Mois</th>
+        <th>État</th>
+        <th class="montant">Justificatifs</th>
+        <th class="montant">Montant validé</th>
+        <th class="action"><span class="visuellement-cache">Action</span></th>
+      </tr>
+      {% for fiche in lesfiches %}
+        <tr>
+          <td>{{ fiche.prenom }} {{ fiche.nom }}</td>
+          <td>{{ fiche.mois|slice(4,2) }}/{{ fiche.mois|slice(0,4) }}</td>
+          <td><span class="etat etat--{{ fiche.idEtat|lower }}">{{ fiche.libEtat }}</span></td>
+          <td class="montant">{{ fiche.nbJustificatifs }}</td>
+          <td class="montant">{{ fiche.idEtat in ['VA', 'RB'] ? fiche.montantValide ~ ' €' : '—' }}</td>
+          <td class="action">
+            <a class="bouton-petit" href="{{ path('pg_gsb_frais_admin_fiche', {'idVisiteur': fiche.idVisiteur, 'mois': fiche.mois}) }}">{{ fiche.idEtat == 'CL' ? 'Traiter' : 'Consulter' }}</a>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="vide">Aucune fiche dans cet état.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

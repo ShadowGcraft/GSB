@@ -1,4 +1,5 @@
 <div id="contenu">
+  {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' with {'leserreurs': leserreurshorsforfait, 'lessucces': lessucceshorsforfait} %}
   <div class="tableau-defilant">
     <table class="listeLegere">
       <caption>Descriptif des éléments hors forfait</caption>
@@ -6,39 +7,76 @@
         <th class="date">Date</th>
         <th class="libelle">Libellé</th>
         <th class="montant">Montant</th>
+        <th class="pj">Pièces jointes</th>
         <th class="action"><span class="visuellement-cache">Action</span></th>
       </tr>
       {% for unfrais in lesfraishorsforfait %}
         <tr>
-          <td>{{ unfrais.date }}</td>
+          <td class="date">{{ unfrais.date }}</td>
           <td>{{ unfrais.libelle }}</td>
           <td class="montant">{{ unfrais.montant }} €</td>
+          <td class="pj">
+            {% if unfrais.justificatifs %}
+              <ul class="liste-pj">
+                {% for pj in unfrais.justificatifs %}
+                  <li>
+                    <a href="{{ path('pg_gsb_frais_justificatif_voir', {'id': pj.id}) }}" target="_blank" rel="noopener">{{ pj.nomOriginal }}</a>
+                    <form method="post" action="{{ path('pg_gsb_frais_justificatif_supprimer', {'id': pj.id}) }}" class="form-inline"
+                          onsubmit="return confirm('Supprimer cette pièce jointe ?');">
+                      <button type="submit" class="bouton-lien" title="Supprimer {{ pj.nomOriginal }}">
+                        ✕<span class="visuellement-cache"> Supprimer {{ pj.nomOriginal }}</span>
+                      </button>
+                    </form>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+            <form method="post" enctype="multipart/form-data" class="ajout-pj"
+                  action="{{ path('pg_gsb_frais_justificatif_ajouter', {'id': unfrais.id}) }}">
+              <label class="ajout-pj__label">
+                <input type="file" name="justificatifs[]" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required />
+                <span class="bouton-petit" aria-hidden="true">+ Joindre</span>
+                <span class="visuellement-cache">Joindre un fichier à « {{ unfrais.libelle }} »</span>
+              </label>
+              {# Masqué par saisie.js, qui envoie dès le fichier choisi. #}
+              <button type="submit" class="bouton-petit ajout-pj__envoi">Envoyer</button>
+            </form>
+          </td>
           <td class="action">
             <a class="lien-suppr" href="{{ path('pg_gsb_frais_supprimerfraishorsforfait', {'id': unfrais.id}) }}"
                onclick="return confirm('Voulez-vous vraiment supprimer ce frais ?');">Supprimer</a>
           </td>
         </tr>
       {% else %}
-        <tr><td colspan="4" class="vide">Aucun frais hors forfait pour ce mois.</td></tr>
+        <tr><td colspan="5" class="vide">Aucun frais hors forfait pour ce mois.</td></tr>
       {% endfor %}
     </table>
   </div>
 
-  <form action="{{ path('pg_gsb_frais_validerfraishorsforfais') }}" method="post">
+  <form action="{{ path('pg_gsb_frais_validerfraishorsforfais') }}" method="post" enctype="multipart/form-data">
     <div class="corpsForm">
       <fieldset>
         <legend>Nouvel élément hors forfait</legend>
         <p>
-          <label for="txtDateHF">Date (jj/mm/aaaa)</label>
-          <input type="text" id="txtDateHF" name="dateFrais" size="10" maxlength="10" value="" />
+          <label for="txtDateHF">Date</label>
+          <input type="date" id="txtDateHF" name="dateFrais" required
+                 min="{{ ilyaunan }}" max="{{ aujourdhui }}" value="" />
         </p>
         <p>
           <label for="txtLibelleHF">Libellé</label>
-          <input type="text" id="txtLibelleHF" class="champ-large" name="libelle" maxlength="256" value="" />
+          <input type="text" id="txtLibelleHF" class="champ-large" name="libelle" maxlength="100" required value="" />
         </p>
         <p>
-          <label for="txtMontantHF">Montant</label>
-          <input type="text" id="txtMontantHF" name="montant" size="10" maxlength="10" inputmode="decimal" value="" />
+          <label for="txtMontantHF">Montant (€)</label>
+          <input type="text" id="txtMontantHF" name="montant" size="10" maxlength="10" inputmode="decimal" required value="" />
+        </p>
+        <p>
+          <label for="pjHF">Pièces jointes</label>
+          <span class="champ-fichier">
+            <input type="file" id="pjHF" name="justificatifs[]" multiple
+                   accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" aria-describedby="pjHFaide" />
+            <small id="pjHFaide">PDF, JPEG ou PNG, 5 Mo au plus par fichier. Facultatif, ajoutable plus tard.</small>
+          </span>
         </p>
       </fieldset>
     </div>

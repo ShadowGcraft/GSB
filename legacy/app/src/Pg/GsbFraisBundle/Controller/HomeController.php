@@ -1,45 +1,46 @@
 <?php
 namespace Pg\GsbFraisBundle\Controller;
 require_once("include/fct.inc.php");
-//require_once ("include/class.pdogsb.inc.php");
-use Symfony\Component\HttpFoundation\Session\Session;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
-//use PdoGsb;
+use Symfony\Component\HttpFoundation\Request;
 
-class HomeController extends Controller
+class HomeController extends GsbController
 {
     public function indexAction()
     {
-       $session= $this->get('request')->getSession();
-       if(estConnecte($session)){
-              return $this->render('PgGsbFraisBundle:accueil.html.twig');
-            }
-        else 
-              return $this->render('PgGsbFraisBundle:Home:connexion.html.twig');
+        $session = $this->session();
+        if (!$session->get('id')) {
+            return $this->render('PgGsbFraisBundle:Home:connexion.html.twig');
+        }
+        if ($session->get('role') === self::ROLE_ADMIN) {
+            return $this->redirectToRoute('pg_gsb_frais_admin_fiches');
+        }
+        return $this->render('PgGsbFraisBundle::accueil.html.twig');
     }
-    public function validerconnexionAction(){
-        $session= $this->get('request')->getSession();
-        $request = $this->get('request');
-        $login =  $request->request->get('login');
+
+    public function validerconnexionAction(Request $request){
+        $session = $request->getSession();
+        $login = $request->request->get('login');
         $mdp = $request->request->get('mdp');
-        //$pdo = PdoGsb::getPdoGsb();
-        $pdo = $this->get('pg_gsb_frais.pdo');
-        $visiteur = $pdo->getInfosVisiteur($login,$mdp);
+        $visiteur = $this->pdo()->getInfosVisiteur($login,$mdp);
         if(!is_array($visiteur)){
             return $this->render('PgGsbFraisBundle:Home:connexion.html.twig',array(
-               'message'=>'Erreur de login ou de mot de passe ')); 
+               'message'=>'Erreur de login ou de mot de passe '));
         }
-        else{
-            $session->set('id',$visiteur['id']);
-            $session->set('nom',$visiteur['nom']);
-            $session->set('prenom',$visiteur['prenom']);
-            return $this->render('PgGsbFraisBundle::accueil.html.twig');
+        if(!$visiteur['actif']){
+            return $this->render('PgGsbFraisBundle:Home:connexion.html.twig',array(
+               'message'=>'Ce compte est désactivé. Adressez-vous à l\'administrateur.'));
         }
-    } 
+        $session->migrate();
+        $session->set('id',$visiteur['id']);
+        $session->set('nom',$visiteur['nom']);
+        $session->set('prenom',$visiteur['prenom']);
+        $session->set('role',$visiteur['role']);
+        return $this->redirectToRoute('pg_gsb_frais_home');
+    }
+
     public function deconnexionAction(){
-        $session= $this->get('request')->getSession();
-        $session->clear();
-        return $this->render('PgGsbFraisBundle:Home:connexion.html.twig');
+        $this->session()->clear();
+        return $this->redirectToRoute('pg_gsb_frais_home');
    }
 }
 ?>

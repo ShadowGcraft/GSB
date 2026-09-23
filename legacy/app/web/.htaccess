@@ -17,6 +17,12 @@ DirectoryIndex app.php
     Options -MultiViews
 </IfModule>
 
+# Pieces jointes des frais hors forfait : 5 Mo par fichier, plusieurs par envoi.
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 6M
+    php_value post_max_size 32M
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 

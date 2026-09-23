@@ -9,12 +9,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" />
     <link href="{{ asset('bundles/gsbfrais/styles/styles.css') }}" rel="stylesheet" type="text/css" />
   </head>
-  <body class="gsb-page">
+  {# Espace administrateur : autre jeu de couleurs, pour marquer le changement de statut. #}
+  <body class="gsb-page{% if app.session.get('role') == 'admin' %} gsb-admin{% endif %}">
     {{ include('PgGsbFraisBundle::_decor_voyage.html.twig') }}
     <div id="page">
       <div id="entete">
         <img src="{{ asset('bundles/gsbfrais/images/logo.png') }}" id="logoGSB" alt="Laboratoire Galaxy-Swiss Bourdin" title="Laboratoire Galaxy-Swiss Bourdin" />
         <h1>Suivi du remboursement des frais</h1>
+        {% if app.session.get('role') == 'admin' %}<span class="badge-statut">Administrateur</span>{% endif %}
       </div>
     </div>
     <div id="corps">

@@ -259,7 +259,7 @@ if lsof -nP -iTCP:$PORT_WEB -sTCP:LISTEN > /dev/null 2>&1; then
 fi
 
 if [ "$deja_lance" -eq 0 ]; then
-    ("$PHP" -S 127.0.0.1:$PORT_WEB -t app/web sans-docker/routeur.php \
+    ("$PHP" -d upload_max_filesize=6M -d post_max_size=32M -S 127.0.0.1:$PORT_WEB -t app/web sans-docker/routeur.php \
         > "$LOCAL/log/php-server.log" 2>&1 &)
 fi
 
@@ -278,6 +278,7 @@ if [ "$code" = "200" ]; then
     echo "      dandre  / oppg5    David André, quatre fiches, tous les états"
     echo "      cbedos  / gvide    Christian Bedos, trois fiches"
     echo "      pbentot / doypa    Pascal Bentot, une seule fiche"
+    echo "      admin   / gsbadmin Administrateur : validation des fiches, comptes"
     echo
     echo "    Pour arrêter :  ./sans-docker/arreter-mac.sh"
     echo

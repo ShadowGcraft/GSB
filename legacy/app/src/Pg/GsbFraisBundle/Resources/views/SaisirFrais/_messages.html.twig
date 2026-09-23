@@ -1,0 +1,9 @@
+{# Messages après envoi d'un formulaire : erreurs, puis confirmations. #}
+{% include 'PgGsbFraisBundle:SaisirFrais:erreurs.html.twig' with {'leserreurs': leserreurs} %}
+{% if lessucces %}
+<div class="succes" role="status">
+  <ul>
+    {% for message in lessucces %}<li>{{ message }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
