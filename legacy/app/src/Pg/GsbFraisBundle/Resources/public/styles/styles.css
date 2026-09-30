@@ -73,7 +73,9 @@ body.gsb-page {
   justify-content: space-between;
   gap: 24px;
 }
-#logoGSB { height: 52px; width: auto; display: block; }
+#lienAccueil { display: block; border-radius: 8px; }
+#logoGSB { height: 48px; width: auto; display: block; transition: transform .15s ease; }
+#lienAccueil:hover #logoGSB { transform: scale(1.05); }
 #entete h1 {
   margin: 0;
   font-family: var(--gsb-font-display);
@@ -586,8 +588,8 @@ body.gsb-admin .smenu a[aria-current="page"] { background: rgba(240, 201, 140, .
 .filtres a[aria-current="page"] { background: var(--gsb-accent); border-color: var(--gsb-accent); color: var(--gsb-accent-ink); font-weight: 700; }
 
 @media (prefers-reduced-motion: reduce) {
-  .fiche { transition: none; }
-  .fiche:hover { transform: none; }
+  .fiche, #logoGSB { transition: none; }
+  .fiche:hover, #lienAccueil:hover #logoGSB { transform: none; }
 }
 
 /* --- petits écrans : le menu passe au-dessus du contenu ---------------------- */

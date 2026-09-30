@@ -17,7 +17,10 @@
     {{ include('PgGsbFraisBundle::_decor_voyage.html.twig') }}
     <div id="page">
       <div id="entete">
-        <img src="{{ asset('bundles/gsbfrais/images/logo.svg') }}" id="logoGSB" alt="Laboratoire Galaxy-Swiss Bourdin" title="Laboratoire Galaxy-Swiss Bourdin" />
+        {# Le logo ramène à l'accueil, qui oriente chacun selon son rôle. #}
+        <a href="{{ path('pg_gsb_frais_home') }}" id="lienAccueil" title="Retour à l'accueil">
+          <img src="{{ asset('bundles/gsbfrais/images/gsb.svg') }}" id="logoGSB" alt="Laboratoire Galaxy-Swiss Bourdin, accueil" />
+        </a>
         <h1>Suivi du remboursement des frais</h1>
         {% if statuts[role] is defined %}<span class="badge-statut">{{ statuts[role] }}</span>{% endif %}
       </div>
