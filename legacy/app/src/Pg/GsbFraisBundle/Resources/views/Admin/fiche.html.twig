@@ -51,7 +51,7 @@
                 <span class="qte-saisie__unite">{{ unfrais.unite }}</span>
               </span>
             {% else %}
-              {{ unfrais.quantite }} {{ unfrais.unite }}
+              {{ unfrais.quantite }} {{ unfrais.unite|replace({'(s)': unfrais.quantite > 1 ? 's' : ''}) }}
             {% endif %}
           </td>
           <td class="montant">{{ unfrais.montant|number_format(2, '.', ' ') }} €</td>
@@ -78,7 +78,15 @@
       {% for unfrais in lesfraishorsforfait %}
         <tr{% if unfrais.refuse %} class="ligne-refusee"{% endif %}>
           <td class="date">{{ unfrais.date }}</td>
-          <td>{{ unfrais.libelle }}{% include 'PgGsbFraisBundle:ListeFrais:_report.html.twig' with {'origine': unfrais.moisOrigine} only %}{% if unfrais.refuse %} <span class="etiquette-refus">Refusé</span>{% endif %}</td>
+          <td>
+            <span class="cellule-categorie">
+              <svg class="icone" aria-hidden="true"><use href="#ic-{{ unfrais.idCategorie ?: 'AUT' }}"/></svg>
+              <span>
+                {{- unfrais.libelle }}{% include 'PgGsbFraisBundle:ListeFrais:_report.html.twig' with {'origine': unfrais.moisOrigine} only %}{% if unfrais.refuse %} <span class="etiquette-refus">Refusé</span>{% endif %}
+                {% if unfrais.libCategorie != unfrais.libelle %}<small class="cellule-categorie__nom">{{ unfrais.libCategorie ?: 'Non classé' }}</small>{% endif %}
+              </span>
+            </span>
+          </td>
           <td class="montant">{{ unfrais.montant }} €</td>
           <td class="pj">
             {% for pj in unfrais.justificatifs %}

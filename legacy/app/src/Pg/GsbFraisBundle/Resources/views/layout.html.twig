@@ -15,6 +15,7 @@
   {% set statuts = { 'comptable': 'Comptable', 'admin': 'Administrateur' } %}
   <body class="gsb-page{% if statuts[role] is defined %} gsb-{{ role }}{% endif %}">
     {{ include('PgGsbFraisBundle::_decor_voyage.html.twig') }}
+    {{ include('PgGsbFraisBundle::_icones.html.twig') }}
     <div id="page">
       <div id="entete">
         {# Le logo ramène à l'accueil, qui oriente chacun selon son rôle. #}

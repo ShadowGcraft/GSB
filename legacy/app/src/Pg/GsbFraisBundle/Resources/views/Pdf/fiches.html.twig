@@ -59,13 +59,16 @@
               <th>Montant unitaire</th>
               <th>Total</th>
             </tr>
-            {% for unfrais in fiche.lesfraisforfait %}
+            {# Comme sur l'annexe 1, seuls les forfaits consommés figurent. #}
+            {% for unfrais in fiche.lesfraisforfait if unfrais.quantite > 0 %}
               <tr>
                 <td>{{ unfrais.libelle }}</td>
                 <td class="num">{{ unfrais.quantite }}</td>
                 <td class="num">{{ unfrais.montant|number_format(2, ',', ' ') }}</td>
                 <td class="num">{{ unfrais.total|number_format(2, ',', ' ') }}</td>
               </tr>
+            {% else %}
+              <tr><td colspan="4" class="vide">Aucun frais forfaitisé ce mois-là.</td></tr>
             {% endfor %}
             <tr><th colspan="4" class="section">Autres frais</th></tr>
             <tr>
@@ -76,7 +79,10 @@
             {% for unfrais in fiche.lesfraishorsforfait if not unfrais.refuse %}
               <tr>
                 <td>{{ unfrais.date }}</td>
-                <td colspan="2">{{ unfrais.libelle }}</td>
+                <td colspan="2">
+                  {%- if unfrais.libCategorie and unfrais.libCategorie != unfrais.libelle %}{{ unfrais.libCategorie }} · {% endif -%}
+                  {{ unfrais.libelle }}
+                </td>
                 <td class="num">{{ unfrais.montant|number_format(2, ',', ' ') }}</td>
               </tr>
             {% else %}

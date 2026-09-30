@@ -1,0 +1,91 @@
+{% extends "PgGsbFraisBundle::accueil.html.twig" %}
+{% block body %}
+<div id="contenu" class="contenu--tableau">
+  <h2>Bonjour {{ app.session.get('prenom') }}</h2>
+
+  {# 1. La fiche du mois en cours. #}
+  <section class="bloc" aria-labelledby="titreMois">
+    <div class="entete-page">
+      <h3 id="titreMois">{{ libmois }} · {{ fiche ? 'saisie en cours' : 'rien de saisi' }}</h3>
+      <a class="bouton-principal" href="{{ path('pg_gsb_frais_saisirfrais') }}">{{ fiche ? 'Continuer la saisie' : 'Commencer la saisie' }} →</a>
+    </div>
+    {% if fiche %}
+      {# Seuls les forfaits saisis ont leur tuile. #}
+      <ul class="tuiles">
+        {% for unfrais in lesfraisforfait if unfrais.quantite > 0 %}
+          <li><strong>{{ unfrais.quantite }}</strong><span>{{ unfrais.unite|replace({'(s)': unfrais.quantite > 1 ? 's' : ''}) }}</span></li>
+        {% endfor %}
+        <li><strong>{{ nbhorsforfait }}</strong><span>hors forfait</span></li>
+      </ul>
+      <p class="encadre__etat">
+        <span>Montant estimé : <strong>{{ montantestime|number_format(2, ',', ' ') }} €</strong></span>
+        <span>Clôture {{ cloture }}</span>
+        {% if vehicule %}<span>Km à {{ vehicule.tarif|number_format(2, ',', ' ') }} € ({{ vehicule.puissance }} {{ vehicule.carburant|lower }})</span>{% endif %}
+      </p>
+    {% else %}
+      <p class="aide-texte">Votre fiche de {{ libmois|lower }} sera créée à votre première saisie. Clôture {{ cloture }}.</p>
+    {% endif %}
+  </section>
+
+  {# 2. Ce qui attend le visiteur. #}
+  <section class="bloc" aria-labelledby="titreAFaire">
+    <h3 id="titreAFaire">À faire</h3>
+    {% if afaire %}
+      <ul class="afaire">
+        {% for item in afaire %}
+          <li class="afaire__item afaire__item--{{ item.type }}">
+            <span>{{ item.texte }}</span>
+            {% if item.lien %}<a class="bouton-petit" href="{{ item.lien }}">{{ item.action }}</a>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="afaire__rien">Rien à signaler : tout est à jour.</p>
+    {% endif %}
+  </section>
+
+  {# 3. L'année écoulée : montant remboursé et prestations, mois par mois (RG46, RG47). #}
+  <section class="bloc" aria-labelledby="titreAnnee">
+    <h3 id="titreAnnee">Mes remboursements sur 12 mois</h3>
+    {% if synthese %}
+      <div class="tableau-defilant">
+        <table class="listeLegere">
+          <tr>
+            <th>Mois</th>
+            <th class="montant">Montant</th>
+            <th>État</th>
+            <th class="montant">Prestations</th>
+            <th class="action"><span class="visuellement-cache">Détail</span></th>
+          </tr>
+          {% for ligne in synthese %}
+            <tr>
+              <td class="date">{{ ligne.libMois }}</td>
+              <td class="montant">
+                {%- if ligne.idEtat in ['VA', 'MP', 'RB'] -%}
+                  {{ ligne.montantValide|number_format(2, ',', ' ') }} €
+                {%- else -%}
+                  <span class="vide">à valider</span>
+                {%- endif -%}
+              </td>
+              <td><span class="etat etat--{{ ligne.idEtat|lower }}">{{ ligne.libEtat }}</span></td>
+              <td class="montant">{{ ligne.nbPrestations }}</td>
+              <td class="action">
+                <form method="post" action="{{ path('pg_gsb_frais_listefrais') }}" class="form-inline">
+                  <input type="hidden" name="lstMois" value="{{ ligne.mois }}" />
+                  <button type="submit" class="bouton-petit" aria-label="Détail de {{ ligne.libMois|lower }}">Détail</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+      <p class="encadre__etat totaux">
+        <span>Remboursé : <strong>{{ rembourse|number_format(2, ',', ' ') }} €</strong></span>
+        {% if enpaiement %}<span>Validé, en attente de paiement : <strong>{{ enpaiement|number_format(2, ',', ' ') }} €</strong></span>{% endif %}
+      </p>
+    {% else %}
+      <p class="aide-texte">Aucune fiche sur les douze derniers mois.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

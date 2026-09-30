@@ -31,8 +31,12 @@
               </button>
             </div>
             <div class="aide__panneau" id="aidePanneau" hidden>
-              <dl>
                 {% for unfrais in lesfraisforfait %}
+                  {% if loop.first or lesfraisforfait[loop.index0 - 1].groupe != unfrais.groupe %}
+                    {% if not loop.first %}</dl>{% endif %}
+                    <p class="aide__groupe">{{ unfrais.groupe }}</p>
+                    <dl>
+                  {% endif %}
                   <div class="aide__item" data-frais="{{ unfrais.idfrais }}">
                     <dt>{{ unfrais.libelle }} <span class="aide__tarif">
                       {%- if unfrais.idfrais == 'KM' and not vehicule -%}
@@ -47,16 +51,26 @@
                 {% endfor %}
               </dl>
             </div>
+            {# Regroupés par thème ; le référentiel arrive trié par groupe. #}
             <select id="idFrais" name="idFrais" required>
               <option value="">— Choisir —</option>
               {% for unfrais in lesfraisforfait %}
-                {% if unfrais.idfrais == 'KM' and not vehicule %}
-                  <option value="{{ unfrais.idfrais }}" disabled>{{ unfrais.libelle }} (véhicule à déclarer)</option>
-                {% else %}
-                  <option value="{{ unfrais.idfrais }}" data-unite="{{ unfrais.unite }}">{{ unfrais.libelle }}</option>
+                {% if loop.first or lesfraisforfait[loop.index0 - 1].groupe != unfrais.groupe %}
+                  {% if not loop.first %}</optgroup>{% endif %}
+                  <optgroup label="{{ unfrais.groupe }}">
                 {% endif %}
+                {% if unfrais.idfrais == 'KM' and not vehicule %}
+                  <option value="{{ unfrais.idfrais }}" disabled>{{ unfrais.libelle }} · véhicule à déclarer</option>
+                {% else %}
+                  <option value="{{ unfrais.idfrais }}" data-unite="{{ unfrais.unite }}">
+                    {{- unfrais.libelle }} · {{ unfrais.montant|number_format(2, ',', ' ') }} €{{ unfrais.idfrais == 'KM' ? ' / km' -}}
+                  </option>
+                {% endif %}
+                {% if loop.last %}</optgroup>{% endif %}
               {% endfor %}
             </select>
+            <small class="aide-texte">Dépense absente de la liste (repas du soir, parking, transport…) ?
+              <a href="#nouveauHorsForfait">Déclarez-la en hors forfait</a>, avec son prix et sa facture.</small>
           </li>
           <li class="etape" data-etape="quantite">
             <label for="quantite"><span class="etape__num" aria-hidden="true">3</span> Quantité</label>
@@ -81,11 +95,13 @@
         <th>Type de frais</th>
         <th class="montant">Quantité</th>
       </tr>
-      {% for unfrais in lesfraisforfait %}
+      {% for unfrais in lesfraisforfait if unfrais.quantite > 0 %}
         <tr>
           <td>{{ unfrais.libelle }}</td>
-          <td class="montant">{{ unfrais.quantite }} {{ unfrais.unite }}</td>
+          <td class="montant">{{ unfrais.quantite }} {{ unfrais.unite|replace({'(s)': unfrais.quantite > 1 ? 's' : ''}) }}</td>
         </tr>
+      {% else %}
+        <tr><td colspan="2" class="vide">Aucun frais forfaitisé ce mois-ci.</td></tr>
       {% endfor %}
     </table>
   </div>

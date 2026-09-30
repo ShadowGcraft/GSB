@@ -22,6 +22,9 @@ class SaisirFraisController extends GsbController
         $mois = getMois(date("d/m/Y"));
         if($this->pdo()->estPremierFraisMois($idVisiteur,$mois)){
             $this->pdo()->creeNouvellesLignesFrais($idVisiteur,$mois);
+        } else {
+            // Une fiche ouverte avant l'ajout d'un forfait au référentiel reçoit sa ligne.
+            $this->pdo()->completeLignesFraisForfait($idVisiteur,$mois);
         }
         return $mois;
     }
@@ -67,6 +70,7 @@ class SaisirFraisController extends GsbController
         return $this->render('PgGsbFraisBundle:SaisirFrais:saisirtouslesfrais.html.twig', array(
             'lesfraisforfait' => $pdo->getLesFraisForfait($idVisiteur,$mois),
             'lesfraishorsforfait' => $pdo->getLesFraisHorsForfait($idVisiteur,$mois),
+            'lescategories' => array_values($pdo->getLesCategoriesHorsForfait()),
             'vehicule' => $vehicule,
             'nummois' => substr($mois,4,2),
             'numannee' => substr($mois,0,4),
@@ -123,8 +127,9 @@ class SaisirFraisController extends GsbController
         } else {
             $this->pdo()->ajouteQuantiteFraisForfait($idVisiteur, $mois, $idFrais, (int) $quantite);
             $unFrais = $lesFrais[$idFrais];
-            $this->ajouteMessage('succesForfait', sprintf('Ajouté : %d %s (%s) le %s.',
-                $quantite, $unFrais['unite'] ?: '', $unFrais['libelle'], $jour->format('d/m/Y')));
+            $unite = str_replace('(s)', (int) $quantite > 1 ? 's' : '', (string) $unFrais['unite']);
+            $this->ajouteMessage('succesForfait', sprintf('Ajouté le %s : %s, %d %s.',
+                $jour->format('d/m/Y'), $unFrais['libelle'], $quantite, $unite));
         }
         return $this->versSaisie();
     }
@@ -138,22 +143,40 @@ class SaisirFraisController extends GsbController
         $idVisiteur = $this->session()->get('id');
         $mois = $this->moisCourant();
         $dateFrais = (string) $request->request->get('dateFrais');
-        $libelle = trim((string) $request->request->get('libelle'));
+        $idCategorie = (string) $request->request->get('idCategorie');
+        $detail = trim((string) $request->request->get('libelle'));
         $montant = str_replace(',', '.', trim((string) $request->request->get('montant')));
+
+        // La catégorie est obligatoire, le détail facultatif sauf pour « Autre » :
+        // sans détail, le libellé enregistré est celui de la catégorie.
+        $lesCategories = $this->pdo()->getLesCategoriesHorsForfait();
+        $categorieErreurs = array();
+        if (!isset($lesCategories[$idCategorie])) {
+            $categorieErreurs[] = 'Choisissez la catégorie de la dépense.';
+        } elseif ($detail === '' && $idCategorie === 'AUT') {
+            $categorieErreurs[] = 'Précisez la dépense : la catégorie « Autre » demande un détail.';
+        }
+        $libelle = $detail !== '' ? $detail
+                 : (isset($lesCategories[$idCategorie]) ? $lesCategories[$idCategorie]['libelle'] : '');
 
         // Le calendrier envoie aaaa-mm-jj ; les contrôles de 2013 attendent jj/mm/aaaa.
         if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $dateFrais, $m)) {
             $dateFrais = "$m[3]/$m[2]/$m[1]";
         }
-        $lesErreurs = valideInfosFrais($dateFrais,$libelle,$montant);
+        // Le libellé manquant est déjà signalé par la catégorie : pas de second message.
+        $lesErreurs = array_merge($categorieErreurs, valideInfosFrais($dateFrais, $libelle !== '' ? $libelle : '-', $montant));
+        if (!$lesErreurs && $montant <= 0) {
+            $lesErreurs[] = 'Le montant doit être supérieur à zéro.';
+        }
         if (!$lesErreurs && dateFrancaisVersAnglais($dateFrais) > date('Y-m-d')) {
             $lesErreurs[] = 'La date du frais ne peut pas être dans le futur.';
         }
         if (!$lesErreurs) {
-            $idFrais = $this->pdo()->creeNouveauFraisHorsForfait($idVisiteur,$mois,$libelle,$dateFrais,$montant);
+            $idFrais = $this->pdo()->creeNouveauFraisHorsForfait($idVisiteur,$mois,$libelle,$dateFrais,$montant,$idCategorie);
             $lesErreurs = $this->enregistreJustificatifs($idFrais, $request->files->get('justificatifs'));
             $this->pdo()->recalculeNbJustificatifs($idVisiteur, $mois);
-            $this->ajouteMessage('succesHorsForfait', 'Frais hors forfait ajouté.');
+            $this->ajouteMessage('succesHorsForfait', sprintf('Dépense ajoutée : %s, %s €.',
+                $libelle, number_format((float) $montant, 2, ',', ' ')));
         }
         foreach ($lesErreurs as $erreur) $this->ajouteMessage('erreurHorsForfait', $erreur);
         return $this->versSaisie();

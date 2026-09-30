@@ -1,0 +1,63 @@
+{# Les frais hors forfait d'une fiche, en liste, à la manière des applications de
+   notes de frais : icône de la catégorie, titre, date, montant, état de la facture.
+   Attend « lesfraishorsforfait » et « modifiable » : le visiteur ajoute ou retire
+   ses pièces et ses frais tant que la fiche est en cours de saisie. #}
+{% set total = 0 %}
+{% if lesfraishorsforfait %}
+  <ul class="depenses">
+    {% for unfrais in lesfraishorsforfait %}
+      {% set categorie = unfrais.libCategorie ?: 'Non classé' %}
+      {% if not unfrais.refuse %}{% set total = total + unfrais.montant %}{% endif %}
+      <li class="depense{{ unfrais.refuse ? ' depense--refusee' }}">
+        <span class="depense__icone" aria-hidden="true"><svg class="icone"><use href="#ic-{{ unfrais.idCategorie ?: 'AUT' }}"/></svg></span>
+        <div class="depense__corps">
+          <p class="depense__titre">
+            {{ unfrais.libelle }}
+            {%- include 'PgGsbFraisBundle:ListeFrais:_report.html.twig' with {'origine': unfrais.moisOrigine} only %}
+            {%- if unfrais.refuse %} <span class="etiquette-refus">Refusé</span>{% endif %}
+          </p>
+          <p class="depense__meta">
+            {% if unfrais.libelle != categorie %}{{ categorie }} · {% endif %}{{ unfrais.date }}
+          </p>
+          <div class="depense__pj">
+            {% for pj in unfrais.justificatifs %}
+              <span class="pj-jointe">
+                <a href="{{ path('pg_gsb_frais_justificatif_voir', {'id': pj.id}) }}" target="_blank" rel="noopener">{{ pj.nomOriginal }}</a>
+                {% if modifiable %}
+                  <form method="post" action="{{ path('pg_gsb_frais_justificatif_supprimer', {'id': pj.id}) }}" class="form-inline"
+                        onsubmit="return confirm('Supprimer cette pièce jointe ?');">
+                    <button type="submit" class="bouton-lien" title="Supprimer {{ pj.nomOriginal }}">✕<span class="visuellement-cache"> Supprimer {{ pj.nomOriginal }}</span></button>
+                  </form>
+                {% endif %}
+              </span>
+            {% else %}
+              {% if not unfrais.refuse %}<span class="pj-manquante">Facture manquante</span>{% endif %}
+            {% endfor %}
+            {% if modifiable %}
+              <form method="post" enctype="multipart/form-data" class="ajout-pj"
+                    action="{{ path('pg_gsb_frais_justificatif_ajouter', {'id': unfrais.id}) }}">
+                <label class="ajout-pj__label">
+                  <input type="file" name="justificatifs[]" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required />
+                  <span class="bouton-petit" aria-hidden="true">+ Joindre</span>
+                  <span class="visuellement-cache">Joindre un fichier à « {{ unfrais.libelle }} »</span>
+                </label>
+                {# Masqué par saisie.js, qui envoie dès le fichier choisi. #}
+                <button type="submit" class="bouton-petit ajout-pj__envoi">Envoyer</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+        <div class="depense__droite">
+          <span class="depense__montant">{{ unfrais.montant|number_format(2, ',', ' ') }} €</span>
+          {% if modifiable %}
+            <a class="lien-suppr" href="{{ path('pg_gsb_frais_supprimerfraishorsforfait', {'id': unfrais.id}) }}"
+               onclick="return confirm('Voulez-vous vraiment supprimer ce frais ?');">Supprimer</a>
+          {% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+  <p class="depenses__total">Total hors forfait{{ lesfraishorsforfait|filter(f => f.refuse)|length ? ', frais refusés exclus' }} : <strong>{{ total|number_format(2, ',', ' ') }} €</strong></p>
+{% else %}
+  <p class="depenses__vide">Aucune dépense hors forfait ce mois-ci.</p>
+{% endif %}

@@ -4,15 +4,26 @@
     <span>État : <strong>{{ libetat }}</strong> depuis le {{ datemodif }}</span>
     <span>Montant validé : <strong>{{ montantvalide }} €</strong></span>
   </p>
+  {# Consultation seule : les forfaits à zéro sont omis. #}
   <div class="tableau-defilant">
     <table class="listeLegere">
       <caption>Éléments forfaitisés</caption>
       <tr>
-        {% for unfrais in lesfraisforfait %}<th>{{ unfrais.libelle }}</th>{% endfor %}
+        <th>Type de frais</th>
+        <th class="montant">Quantité</th>
+        <th class="montant">Tarif</th>
+        <th class="montant">Total</th>
       </tr>
-      <tr>
-        {% for unfrais in lesfraisforfait %}<td class="qteForfait">{{ unfrais.quantite }}</td>{% endfor %}
-      </tr>
+      {% for unfrais in lesfraisforfait if unfrais.quantite > 0 %}
+        <tr>
+          <td>{{ unfrais.libelle }}</td>
+          <td class="montant">{{ unfrais.quantite }}</td>
+          <td class="montant">{{ unfrais.montant|number_format(2, ',', ' ') }} €</td>
+          <td class="montant">{{ unfrais.total|number_format(2, ',', ' ') }} €</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="vide">Aucun frais forfaitisé ce mois-là.</td></tr>
+      {% endfor %}
     </table>
   </div>
 </div>

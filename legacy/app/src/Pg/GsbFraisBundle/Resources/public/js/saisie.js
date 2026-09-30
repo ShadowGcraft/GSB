@@ -59,3 +59,69 @@
   form.addEventListener('reset', function () { setTimeout(majEtapes, 0); });
   majEtapes();
 })();
+
+/* Dépenses hors forfait : recherche dans la grille des catégories, et détail
+   adapté à la catégorie choisie. Sans ce script, la grille reste complète et le
+   serveur exige le détail pour « Autre ». */
+(function () {
+  var form = document.getElementById('nouveauHorsForfait');
+  if (!form) return;
+
+  var filtre = document.getElementById('filtreCategories');
+  var vide = document.getElementById('categoriesVide');
+  var blocs = form.querySelectorAll('.categories__bloc');
+  var detail = document.getElementById('txtLibelleHF');
+  var facultatif = form.querySelector('#libelleHFlabel .facultatif');
+  var montant = document.getElementById('txtMontantHF');
+  var date = document.getElementById('txtDateHF');
+
+  // Sans accents ni majuscules : « hotel » trouve « Hôtel ».
+  function simplifie(texte) {
+    return texte.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  filtre.hidden = false;
+  filtre.addEventListener('input', function () {
+    var cherche = simplifie(filtre.value.trim());
+    var total = 0;
+    for (var i = 0; i < blocs.length; i++) {
+      var tuiles = blocs[i].querySelectorAll('.categorie'), visibles = 0;
+      for (var j = 0; j < tuiles.length; j++) {
+        var ok = !cherche || simplifie(tuiles[j].getAttribute('data-recherche')).indexOf(cherche) !== -1;
+        tuiles[j].hidden = !ok;
+        if (ok) visibles++;
+      }
+      blocs[i].hidden = visibles === 0;
+      total += visibles;
+    }
+    vide.hidden = total > 0;
+  });
+  // Entrée dans la recherche : ne soumet pas le formulaire.
+  filtre.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') e.preventDefault();
+  });
+
+  function majDetail() {
+    var choisie = form.querySelector('input[name=idCategorie]:checked');
+    if (!choisie) return;
+    var autre = choisie.value === 'AUT';
+    detail.placeholder = choisie.getAttribute('data-exemple') || '';
+    detail.required = autre;
+    facultatif.hidden = autre;
+  }
+  form.addEventListener('change', function (e) {
+    if (e.target.name === 'idCategorie') {
+      majDetail();
+      (date.value ? montant : date).focus();
+    }
+  });
+  form.addEventListener('reset', function () {
+    setTimeout(function () {
+      filtre.value = '';
+      filtre.dispatchEvent(new Event('input'));
+      detail.placeholder = "Choisissez d'abord une catégorie";
+      detail.required = false;
+      facultatif.hidden = false;
+    }, 0);
+  });
+})();

@@ -28,6 +28,9 @@ class PdoGsb{
                                 where table_schema = database() and table_name = 'justificatif'",
                         'evolutions-2026-comptable.sql' => "select count(*) from visiteur where id = 'cpt'",
                         'evolutions-2026-sujet.sql' => "select count(*) from etat where id = 'MP'",
+                        'evolutions-2026-forfaits.sql' => "select count(*) from fraisforfait where id = 'KM' and libelle = 'Kilométrage'",
+                        'evolutions-2026-categories.sql' => "select count(*) from information_schema.referential_constraints
+                                where constraint_schema = database() and constraint_name = 'fk_lhf_categorie'",
                 );
                 foreach ($evolutions as $fichier => $temoin) {
                         if (PdoGsb::$monPdo->query($temoin)->fetchColumn() > 0) {
@@ -88,13 +91,18 @@ class PdoGsb{
  * La boucle foreach ne peut être utilisée ici car on procède
  * à une modification de la structure itérée - transformation du champ date-
  
- * @param $idVisiteur 
+ * @param $idVisiteur
  * @param $mois sous la forme aaaamm
- * @return tous les champs des lignes de frais hors forfait sous la forme d'un tableau associatif 
+ * @return tous les champs des lignes de frais hors forfait, plus le libellé et le groupe
+ *         de leur catégorie, par date d'engagement, sous la forme d'un tableau associatif
 */
 	public function getLesFraisHorsForfait($idVisiteur,$mois){
-	    $req = "select * from lignefraishorsforfait where lignefraishorsforfait.idvisiteur = :idVisiteur 
-		and lignefraishorsforfait.mois = :mois ";
+	    $req = "select lignefraishorsforfait.*, categoriehorsforfait.libelle as libCategorie,
+		categoriehorsforfait.groupe as groupeCategorie
+		from lignefraishorsforfait left join categoriehorsforfait
+		on categoriehorsforfait.id = lignefraishorsforfait.idCategorie
+		where lignefraishorsforfait.idvisiteur = :idVisiteur and lignefraishorsforfait.mois = :mois
+		order by lignefraishorsforfait.date, lignefraishorsforfait.id";
                 $stmt = PdoGsb::$monPdo->prepare($req);
                 $stmt->bindParam(':idVisiteur', $idVisiteur);
 		$stmt->bindParam(':mois', $mois);
@@ -164,18 +172,19 @@ class PdoGsb{
 
  * @param $idVisiteur
  * @param $mois sous la forme aaaamm
- * @return l'id, le libelle, la quantité, le montant unitaire et le total de la ligne,
- *         arrondi au centime (RG8), sous la forme d'un tableau associatif
+ * @return l'id, le libelle, le groupe, la quantité, le montant unitaire et le total de
+ *         la ligne, arrondi au centime (RG8), sous la forme d'un tableau associatif,
+ *         dans l'ordre d'affichage du référentiel
 */
 	public function getLesFraisForfait($idVisiteur, $mois){
 		$montant = self::montantUnitaireSql();
-		$req = "select fraisforfait.id as idfrais, fraisforfait.libelle as libelle,
+		$req = "select fraisforfait.id as idfrais, fraisforfait.libelle as libelle, fraisforfait.groupe as groupe,
 		$montant as montant, round(lignefraisforfait.quantite * $montant, 2) as total,
 		fraisforfait.description as description, fraisforfait.unite as unite,
 		lignefraisforfait.quantite as quantite from lignefraisforfait inner join fraisforfait
 		on fraisforfait.id = lignefraisforfait.idfraisforfait
 		where lignefraisforfait.idvisiteur = :idVisiteur and lignefraisforfait.mois= :mois
-		order by lignefraisforfait.idfraisforfait";
+		order by fraisforfait.ordre, fraisforfait.id";
 		$stmt = PdoGsb::$monPdo->prepare($req);
                 $stmt->bindParam(':idVisiteur', $idVisiteur);
 		$stmt->bindParam(':mois', $mois);
@@ -295,6 +304,20 @@ class PdoGsb{
                 $this->creeFicheFrais($idVisiteur, $mois);
         }
 /**
+ * Ajoute à une fiche, à zéro, les lignes des forfaits apparus au référentiel
+ * après sa création. Les lignes existantes ne sont pas touchées (RG3, RG12).
+ * @param $idVisiteur
+ * @param $mois sous la forme aaaamm
+*/
+        public function completeLignesFraisForfait($idVisiteur, $mois){
+                $req = "insert ignore into lignefraisforfait (idVisiteur, mois, idFraisForfait, quantite)
+                        select :idVisiteur, :mois, fraisforfait.id, 0 from fraisforfait";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':idVisiteur', $idVisiteur);
+                $stmt->bindParam(':mois', $mois);
+                $stmt->execute();
+        }
+/**
  * Crée une fiche de frais à l'état 'CR' et ses lignes de frais au forfait à zéro,
  * sans clôturer aucune autre fiche
  *
@@ -331,15 +354,17 @@ class PdoGsb{
  * @param $libelle : le libelle du frais
  * @param $date : la date du frais au format français jj//mm/aaaa
  * @param $montant : le montant
+ * @param $idCategorie : la catégorie de la dépense
  * @return l'id du frais créé
 */
-        public function creeNouveauFraisHorsForfait($idVisiteur,$mois,$libelle,$date,$montant){
+        public function creeNouveauFraisHorsForfait($idVisiteur,$mois,$libelle,$date,$montant,$idCategorie = null){
                 $dateFr = dateFrancaisVersAnglais($date);
-                $req = "insert into lignefraishorsforfait (idVisiteur, mois, libelle, date, montant)
-                values(:idVisiteur,:mois,:libelle,:date,:montant)";
+                $req = "insert into lignefraishorsforfait (idVisiteur, mois, idCategorie, libelle, date, montant)
+                values(:idVisiteur,:mois,:idCategorie,:libelle,:date,:montant)";
                 $stmt = PdoGsb::$monPdo->prepare($req);
                 $stmt->bindParam(':idVisiteur', $idVisiteur);
                 $stmt->bindParam(':mois', $mois);
+                $stmt->bindParam(':idCategorie', $idCategorie);
                 $stmt->bindParam(':libelle', $libelle);
                 $stmt->bindParam(':date', $dateFr);
                 $stmt->bindParam(':montant', $montant);
@@ -796,6 +821,68 @@ class PdoGsb{
                 $stmt->bindParam(':cible', $moisCible);
                 $stmt->bindParam(':id', $idFrais);
                 $stmt->execute();
+        }
+
+/**
+ * Synthèse des fiches d'un visiteur sur une période, pour son tableau de bord (RG46).
+ *
+ * Le nombre de prestations suit RG47 : les quantités forfaitisées hors
+ * kilométrage, qui est une distance, plus les frais hors forfait non refusés.
+ * @param $idVisiteur
+ * @param $moisDebut premier mois inclus, aaaamm
+ * @param $moisFin mois exclu, aaaamm
+ * @return un tableau associatif : mois, idEtat, libEtat, montantValide, nbPrestations
+ */
+        public function getSyntheseFiches($idVisiteur, $moisDebut, $moisFin){
+                $req = "select fichefrais.mois as mois, fichefrais.idEtat as idEtat, etat.libelle as libEtat,
+                        fichefrais.montantValide as montantValide,
+                        (select coalesce(sum(lignefraisforfait.quantite), 0) from lignefraisforfait
+                         where lignefraisforfait.idVisiteur = fichefrais.idVisiteur
+                         and lignefraisforfait.mois = fichefrais.mois and lignefraisforfait.idFraisForfait <> 'KM')
+                        + (select count(*) from lignefraishorsforfait
+                           where lignefraishorsforfait.idVisiteur = fichefrais.idVisiteur
+                           and lignefraishorsforfait.mois = fichefrais.mois and lignefraishorsforfait.refuse = 0)
+                        as nbPrestations
+                        from fichefrais inner join etat on etat.id = fichefrais.idEtat
+                        where fichefrais.idVisiteur = :idVisiteur
+                        and fichefrais.mois >= :debut and fichefrais.mois < :fin
+                        order by fichefrais.mois desc";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':idVisiteur', $idVisiteur);
+                $stmt->bindParam(':debut', $moisDebut);
+                $stmt->bindParam(':fin', $moisFin);
+                $stmt->execute();
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Les frais hors forfait refusés par le comptable depuis un mois donné (RG41)
+ * @param $idVisiteur
+ * @param $moisDebut premier mois inclus, aaaamm
+ * @return un tableau associatif : mois, libelle, montant
+ */
+        public function getLesFraisRefuses($idVisiteur, $moisDebut){
+                $req = "select mois, libelle, montant from lignefraishorsforfait
+                        where idVisiteur = :idVisiteur and refuse = 1 and mois >= :debut
+                        order by mois desc, id";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':idVisiteur', $idVisiteur);
+                $stmt->bindParam(':debut', $moisDebut);
+                $stmt->execute();
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Les catégories des frais hors forfait, dans l'ordre d'affichage, groupées par thème
+ * @return un tableau associatif indexé par l'id : id, libelle, groupe, ordre, exemple, motscles
+ */
+        public function getLesCategoriesHorsForfait(){
+                $req = "select id, libelle, groupe, ordre, exemple, motscles from categoriehorsforfait order by ordre";
+                $lesCategories = array();
+                foreach (PdoGsb::$monPdo->query($req)->fetchAll(PDO::FETCH_ASSOC) as $uneCategorie) {
+                        $lesCategories[$uneCategorie['id']] = $uneCategorie;
+                }
+                return $lesCategories;
         }
 
 /**

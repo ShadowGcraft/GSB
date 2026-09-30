@@ -1,27 +1,2 @@
-<div class="tableau-defilant">
-  <table class="listeLegere">
-    <caption>Éléments hors forfait · {{ nbjustificatifs }} justificatif{{ nbjustificatifs > 1 ? 's' }} reçu{{ nbjustificatifs > 1 ? 's' }}</caption>
-    <tr>
-      <th class="date">Date</th>
-      <th class="libelle">Libellé</th>
-      <th class="montant">Montant</th>
-      <th class="pj">Pièces jointes</th>
-    </tr>
-    {% for unFrais in lesfraishorsforfait %}
-      <tr{% if unFrais.refuse %} class="ligne-refusee"{% endif %}>
-        <td class="date">{{ unFrais.date }}</td>
-        <td>{{ unFrais.libelle }}{% include 'PgGsbFraisBundle:ListeFrais:_report.html.twig' with {'origine': unFrais.moisOrigine} only %}{% if unFrais.refuse %} <span class="etiquette-refus">Refusé</span>{% endif %}</td>
-        <td class="montant">{{ unFrais.montant }} €</td>
-        <td class="pj">
-          {% for pj in unFrais.justificatifs %}
-            <a href="{{ path('pg_gsb_frais_justificatif_voir', {'id': pj.id}) }}" target="_blank" rel="noopener">{{ pj.nomOriginal }}</a>{% if not loop.last %}<br />{% endif %}
-          {% else %}
-            <span class="vide">Aucune</span>
-          {% endfor %}
-        </td>
-      </tr>
-    {% else %}
-      <tr><td colspan="4" class="vide">Aucun frais hors forfait ce mois-ci.</td></tr>
-    {% endfor %}
-  </table>
-</div>
+<h3>Dépenses hors forfait · {{ nbjustificatifs }} justificatif{{ nbjustificatifs > 1 ? 's' }} reçu{{ nbjustificatifs > 1 ? 's' }}</h3>
+{% include 'PgGsbFraisBundle:ListeFrais:_depenses.html.twig' with {'lesfraishorsforfait': lesfraishorsforfait, 'modifiable': false} only %}

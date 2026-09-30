@@ -1,88 +1,71 @@
 <div id="contenu">
+  <h2 class="titre-section">Dépenses hors forfait</h2>
   {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' with {'leserreurs': leserreurshorsforfait, 'lessucces': lessucceshorsforfait} %}
-  <div class="tableau-defilant">
-    <table class="listeLegere">
-      <caption>Descriptif des éléments hors forfait</caption>
-      <tr>
-        <th class="date">Date</th>
-        <th class="libelle">Libellé</th>
-        <th class="montant">Montant</th>
-        <th class="pj">Pièces jointes</th>
-        <th class="action"><span class="visuellement-cache">Action</span></th>
-      </tr>
-      {% for unfrais in lesfraishorsforfait %}
-        <tr>
-          <td class="date">{{ unfrais.date }}</td>
-          <td>{{ unfrais.libelle }}{% include 'PgGsbFraisBundle:ListeFrais:_report.html.twig' with {'origine': unfrais.moisOrigine} only %}</td>
-          <td class="montant">{{ unfrais.montant }} €</td>
-          <td class="pj">
-            {% if unfrais.justificatifs %}
-              <ul class="liste-pj">
-                {% for pj in unfrais.justificatifs %}
-                  <li>
-                    <a href="{{ path('pg_gsb_frais_justificatif_voir', {'id': pj.id}) }}" target="_blank" rel="noopener">{{ pj.nomOriginal }}</a>
-                    <form method="post" action="{{ path('pg_gsb_frais_justificatif_supprimer', {'id': pj.id}) }}" class="form-inline"
-                          onsubmit="return confirm('Supprimer cette pièce jointe ?');">
-                      <button type="submit" class="bouton-lien" title="Supprimer {{ pj.nomOriginal }}">
-                        ✕<span class="visuellement-cache"> Supprimer {{ pj.nomOriginal }}</span>
-                      </button>
-                    </form>
-                  </li>
-                {% endfor %}
-              </ul>
-            {% endif %}
-            <form method="post" enctype="multipart/form-data" class="ajout-pj"
-                  action="{{ path('pg_gsb_frais_justificatif_ajouter', {'id': unfrais.id}) }}">
-              <label class="ajout-pj__label">
-                <input type="file" name="justificatifs[]" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" required />
-                <span class="bouton-petit" aria-hidden="true">+ Joindre</span>
-                <span class="visuellement-cache">Joindre un fichier à « {{ unfrais.libelle }} »</span>
-              </label>
-              {# Masqué par saisie.js, qui envoie dès le fichier choisi. #}
-              <button type="submit" class="bouton-petit ajout-pj__envoi">Envoyer</button>
-            </form>
-          </td>
-          <td class="action">
-            <a class="lien-suppr" href="{{ path('pg_gsb_frais_supprimerfraishorsforfait', {'id': unfrais.id}) }}"
-               onclick="return confirm('Voulez-vous vraiment supprimer ce frais ?');">Supprimer</a>
-          </td>
-        </tr>
-      {% else %}
-        <tr><td colspan="5" class="vide">Aucun frais hors forfait pour ce mois.</td></tr>
-      {% endfor %}
-    </table>
-  </div>
+  {% include 'PgGsbFraisBundle:ListeFrais:_depenses.html.twig' with {'lesfraishorsforfait': lesfraishorsforfait, 'modifiable': true} only %}
 
-  <form action="{{ path('pg_gsb_frais_validerfraishorsforfais') }}" method="post" enctype="multipart/form-data">
+  <form action="{{ path('pg_gsb_frais_validerfraishorsforfais') }}" method="post" enctype="multipart/form-data" id="nouveauHorsForfait">
     <div class="corpsForm">
       <fieldset>
-        <legend>Nouvel élément hors forfait</legend>
-        <p>
-          <label for="txtDateHF">Date</label>
-          <input type="date" id="txtDateHF" name="dateFrais" required
-                 min="{{ ilyaunan }}" max="{{ aujourdhui }}" value="" />
-        </p>
-        <p>
-          <label for="txtLibelleHF">Libellé</label>
-          <input type="text" id="txtLibelleHF" class="champ-large" name="libelle" maxlength="100" required value="" />
-        </p>
-        <p>
-          <label for="txtMontantHF">Montant (€)</label>
-          <input type="text" id="txtMontantHF" name="montant" size="10" maxlength="10" inputmode="decimal" required value="" />
-        </p>
-        <p>
-          <label for="pjHF">Pièces jointes</label>
-          <span class="champ-fichier">
-            <input type="file" id="pjHF" name="justificatifs[]" multiple
-                   accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" aria-describedby="pjHFaide" />
-            <small id="pjHFaide">PDF, JPEG ou PNG, 5 Mo au plus par fichier. Facultatif, ajoutable plus tard.</small>
-          </span>
-        </p>
+        <legend>Nouvelle dépense</legend>
+        <p class="aide-texte">Au prix payé, avec la facture. Repas de midi, nuitée, relais étape et kilomètres se
+          déclarent plus haut, en forfait. Les péages ne sont pas remboursés : votre badge télépéage les couvre.</p>
+
+        {# Étape 1 : la catégorie, choisie dans une grille rangée par thème. #}
+        <div class="categories" role="radiogroup" aria-labelledby="titreCategories">
+          <div class="categories__entete">
+            <span class="categories__titre" id="titreCategories"><span class="etape__num" aria-hidden="true">1</span> Catégorie</span>
+            {# Affiché par saisie.js : sans JavaScript, la grille reste complète. #}
+            <input type="search" id="filtreCategories" class="categories__filtre" placeholder="Rechercher : uber, métro, salle…"
+                   aria-label="Rechercher une catégorie" autocomplete="off" hidden />
+          </div>
+          {% for categorie in lescategories %}
+            {% if loop.first or lescategories[loop.index0 - 1].groupe != categorie.groupe %}
+              {% if not loop.first %}</div></div>{% endif %}
+              <div class="categories__bloc">
+                <p class="categories__groupe">{{ categorie.groupe }}</p>
+                <div class="categories__grille">
+            {% endif %}
+            <label class="categorie" data-recherche="{{ (categorie.libelle ~ ' ' ~ categorie.groupe ~ ' ' ~ categorie.motscles)|lower }}">
+              <input type="radio" name="idCategorie" value="{{ categorie.id }}" required
+                     data-exemple="{{ categorie.exemple }}" />
+              <svg class="icone" aria-hidden="true"><use href="#ic-{{ categorie.id }}"/></svg>
+              <span>{{ categorie.libelle }}</span>
+            </label>
+            {% if loop.last %}</div></div>{% endif %}
+          {% endfor %}
+          <p class="categories__vide" id="categoriesVide" hidden>Aucune catégorie ne correspond. L'hôtel, le repas de midi
+            et les kilomètres sont des forfaits, à déclarer plus haut. Sinon, choisissez « Autre », dans Divers.</p>
+        </div>
+
+        {# Étape 2 : le détail de la dépense. #}
+        <div class="depense-champs">
+          <p>
+            <label for="txtDateHF"><span class="etape__num" aria-hidden="true">2</span> Date</label>
+            <input type="date" id="txtDateHF" name="dateFrais" required min="{{ ilyaunan }}" max="{{ aujourdhui }}" value="" />
+          </p>
+          <p>
+            <label for="txtMontantHF">Montant payé (€)</label>
+            <input type="text" id="txtMontantHF" name="montant" size="10" maxlength="10" inputmode="decimal" required value="" />
+          </p>
+          <p>
+            <label for="txtLibelleHF" id="libelleHFlabel">Détail <span class="facultatif">facultatif</span></label>
+            <input type="text" id="txtLibelleHF" class="champ-large" name="libelle" maxlength="100" value=""
+                   placeholder="Choisissez d'abord une catégorie" autocomplete="off" />
+          </p>
+          <p>
+            <label for="pjHF">Facture</label>
+            <span class="champ-fichier">
+              <input type="file" id="pjHF" name="justificatifs[]" multiple
+                     accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" aria-describedby="pjHFaide" />
+              <small id="pjHFaide">PDF, JPEG ou PNG, 5 Mo au plus par fichier. Ajoutable plus tard si besoin.</small>
+            </span>
+          </p>
+        </div>
       </fieldset>
     </div>
     <div class="piedForm">
       <p>
-        <input id="ajouter" type="submit" value="Ajouter" />
+        <input id="ajouter" type="submit" value="Ajouter la dépense" />
         <input id="effacer" type="reset" value="Effacer" />
       </p>
     </div>

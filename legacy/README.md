@@ -157,7 +157,15 @@ accès, sans la recréer. Ils ajoutent :
   cours de saisie ;
 - les **cinq états** du diagramme : Créée, Clôturée, Validée, Mise en paiement, Remboursée ;
 - l'**édition PDF** au format de l'annexe 1 (bibliothèque dompdf), fiche par fiche ou en un clic pour
-  toutes les fiches du mois précédent dont la saisie est terminée.
+  toutes les fiches du mois précédent dont la saisie est terminée ;
+- un **référentiel des forfaits plus lisible** : les quatre forfaits reprennent les termes du sujet
+  (repas de midi, nuitée hôtel seul, relais étape, kilométrage), rangés par thème, tarif affiché. Leur
+  montant reste fixé par le laboratoire, le visiteur ne saisit qu'une quantité ;
+- des **dépenses hors forfait classées**, comme dans les applications de notes de frais : 27
+  catégories en six thèmes (transport, repas, animations et congrès, bureau, formation, divers),
+  choisies dans une grille d'icônes avec recherche. Le visiteur saisit le prix payé et joint sa
+  facture. Les dépenses s'affichent en liste, avec leur catégorie et l'état de leur facture. Les
+  péages ne figurent pas dans les catégories : le badge télépéage les couvre.
 
 Restent en l'état : les mots de passe en clair, et la saisie des forfaits limitée au mois courant.
 

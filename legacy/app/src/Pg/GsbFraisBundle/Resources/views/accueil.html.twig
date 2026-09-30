@@ -10,6 +10,9 @@
   </div>
   <ul id="menuList">
     <li class="smenu">
+      <a href="{{ path('pg_gsb_frais_home') }}"{% if route == 'pg_gsb_frais_home' %} aria-current="page"{% endif %}>Accueil</a>
+    </li>
+    <li class="smenu">
       <a href="{{ path('pg_gsb_frais_saisirfrais') }}"{% if route starts with 'pg_gsb_frais_saisir' or route starts with 'pg_gsb_frais_valider' or route starts with 'pg_gsb_frais_supprimer' %} aria-current="page"{% endif %}>Saisie fiche de frais</a>
     </li>
     <li class="smenu">
