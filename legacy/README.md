@@ -45,6 +45,10 @@ Les deux derniers comptes, ajoutés en 2026, ont chacun leurs couleurs. Le
 comptable, en vert sapin et or, valide les fiches clôturées. L'administrateur,
 en bordeaux et champagne, fait de même et gère en plus les comptes.
 
+David André et Christian Bedos ont déclaré leur véhicule au début du mois
+dernier. Pascal Bentot n'en a déclaré aucun : sa saisie de kilomètres est
+bloquée, ce qui permet de montrer la règle.
+
 Le mode développement, avec la barre de débogage Symfony, est sur
 <http://localhost:8088/app_dev.php/accueil>.
 
@@ -123,25 +127,39 @@ des quantités forfaitisées, ajout d'un frais hors forfait, suppression d'une l
 consultation d'une fiche clôturée, déconnexion. Les écritures ont été contrôlées en base, pas
 seulement à l'écran.
 
-## Ce qui ne marche pas, et ne marchera pas
+## L'archive telle qu'elle était
 
-- **Le module comptable n'existe pas.** L'entrée « Valider les frais » du menu pointe vers une URL
-  d'avant Symfony, `index.php?uc=validerFrais`, et renvoie une erreur. C'est conforme au cahier des
-  charges, qui constate que cette partie n'a jamais été développée. C'est précisément ce que notre
-  projet doit produire.
-- **La saisie ne porte que sur le mois courant.** Le contrôleur force le mois du jour. La règle du
-  client autorisant une antériorité d'un an n'est pas implémentée.
-- **Aucun montant n'est calculé.** L'application enregistre et affiche des quantités. Ni le montant
-  d'une ligne, ni le total d'une fiche ne sont calculés nulle part, alors que la fiche papier de
-  l'annexe 1 les fait figurer.
-- **Le contrôle d'accès est inopérant.** La fonction `estConnecte` lit le sac de messages flash,
-  alors que la connexion écrit dans la session : elle renvoie toujours faux. Aucune route de saisie
-  ou de consultation ne l'appelle de toute façon. N'importe qui atteint les écrans sans
-  s'authentifier.
+Défauts constatés dans le code de 2013, documentés dans le cahier des charges, section 1.3 :
+
+- **Le module comptable n'existait pas.** L'entrée « Valider les frais » du menu pointait vers une
+  URL d'avant Symfony, `index.php?uc=validerFrais`, qui renvoyait une erreur.
+- **La saisie ne porte que sur le mois courant.** Le contrôleur force le mois du jour.
+- **Aucun montant n'était calculé.** Ni le montant d'une ligne, ni le total d'une fiche.
+- **Le contrôle d'accès était inopérant.** `estConnecte` lit le sac de messages flash alors que la
+  connexion écrit dans la session, et aucune route ne l'appelait.
 - **Les mots de passe sont en clair**, comparés tels quels dans la requête SQL.
 
-Ces défauts ne sont pas corrigés : ce dossier montre l'existant, il ne le répare pas. Ils sont
-documentés dans le cahier des charges, section 1.3, comme justification du projet.
+## Les évolutions de 2026
+
+Les scripts de `Resources/sql/evolutions-2026*.sql` mettent à niveau une base existante au premier
+accès, sans la recréer. Ils ajoutent :
+
+- les rôles comptable et administrateur, le contrôle d'accès par rôle et la gestion des comptes ;
+- les pièces jointes des frais hors forfait (PDF, JPEG, PNG, 5 Mo au plus) ;
+- le **barème kilométrique** du sujet, indexé sur la puissance fiscale et le carburant. Le visiteur
+  déclare son véhicule dans « Mon véhicule », sans pouvoir saisir de km avant. Le taux d'un mois est
+  celui du dernier véhicule valide ce mois-là. Un mois sans véhicule déclaré date d'avant le barème et
+  garde l'ancien taux unique de 0,62 € ;
+- la **validation par le comptable** (annexe 2) : choix du visiteur et du mois, correction des
+  quantités forfaitisées, refus d'un frais hors forfait, report d'un frais sur la fiche du mois
+  suivant, créée au besoin, puis validation ;
+- la **clôture de campagne** : un bouton clôture d'un coup les fiches des mois écoulés restées en
+  cours de saisie ;
+- les **cinq états** du diagramme : Créée, Clôturée, Validée, Mise en paiement, Remboursée ;
+- l'**édition PDF** au format de l'annexe 1 (bibliothèque dompdf), fiche par fiche ou en un clic pour
+  toutes les fiches du mois précédent dont la saisie est terminée.
+
+Restent en l'état : les mots de passe en clair, et la saisie des forfaits limitée au mois courant.
 
 ## Structure
 

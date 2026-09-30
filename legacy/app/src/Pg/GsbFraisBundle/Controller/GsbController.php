@@ -57,6 +57,34 @@ abstract class GsbController extends Controller
         $this->session()->getFlashBag()->add($type, $message);
     }
 
+    private static $nomsMois = array('janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet',
+                                     'août', 'septembre', 'octobre', 'novembre', 'décembre');
+
+    /** « Septembre 2026 » pour 202609. */
+    protected static function libelleMois($mois)
+    {
+        return ucfirst(self::$nomsMois[(int) substr($mois, 4, 2) - 1]).' '.substr($mois, 0, 4);
+    }
+
+    /** « 09/2026 » pour 202609 : dans une phrase, évite « de août ». */
+    protected static function moisCourt($mois)
+    {
+        return substr($mois, 4, 2).'/'.substr($mois, 0, 4);
+    }
+
+    /** « 30 septembre 2026 ». */
+    protected static function dateEnLettres(\DateTime $date)
+    {
+        return $date->format('j').' '.self::$nomsMois[$date->format('n') - 1].' '.$date->format('Y');
+    }
+
+    /** 202610 pour 202609, 202701 pour 202612. */
+    protected static function moisSuivant($mois)
+    {
+        $date = \DateTime::createFromFormat('!Ym', $mois);
+        return $date->modify('+1 month')->format('Ym');
+    }
+
     protected function dossierJustificatifs()
     {
         $dossier = $this->getParameter('kernel.root_dir').'/justificatifs';

@@ -1,9 +1,51 @@
 {% extends "PgGsbFraisBundle:Admin:admin.html.twig" %}
 {% block body %}
-{% set filtres = { 'CL': 'À valider', 'VA': 'Validées', 'RB': 'Remboursées', 'CR': 'En cours de saisie', 'tous': 'Toutes' } %}
+{% set jeton = csrf_token('gsb_admin') %}
+{% set filtres = { 'CL': 'À valider', 'VA': 'Validées', 'MP': 'Mises en paiement', 'RB': 'Remboursées', 'CR': 'En cours de saisie', 'tous': 'Toutes' } %}
 <div id="contenu" class="contenu--admin">
-  <h2>Fiches de frais</h2>
+  <div class="entete-page">
+    <h2>Fiches de frais</h2>
+    {% if nbfichesmoisprecedent %}
+      <a class="bouton-petit" href="{{ path('pg_gsb_frais_admin_pdflot') }}" target="_blank" rel="noopener">
+        Imprimer les fiches {{ moisprecedent }} ({{ nbfichesmoisprecedent }}, PDF)
+      </a>
+    {% endif %}
+  </div>
   {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' %}
+
+  {# Début de campagne : les fiches des mois écoulés doivent être clôturées (RG32). #}
+  {% if nbacloturer %}
+    <form method="post" action="{{ path('pg_gsb_frais_admin_cloturer') }}" class="campagne">
+      <input type="hidden" name="_jeton" value="{{ jeton }}" />
+      <p>
+        <strong>{{ nbacloturer }} fiche{{ nbacloturer > 1 ? 's' }} des mois écoulés {{ nbacloturer > 1 ? 'sont' : 'est' }} encore en cours de saisie.</strong>
+        Clôturez-{{ nbacloturer > 1 ? 'les' : 'la' }} pour ouvrir la campagne de validation.
+      </p>
+      <p><input type="submit" value="{{ nbacloturer > 1 ? 'Clôturer ces fiches' : 'Clôturer cette fiche' }}" /></p>
+    </form>
+  {% endif %}
+
+  {# Étapes 2 et 3 du cas « Valider fiche de frais » : choix du visiteur et du mois. #}
+  <form method="get" action="{{ path('pg_gsb_frais_admin_rechercher') }}" class="recherche">
+    <p>
+      <label for="visiteur">Visiteur</label>
+      <select id="visiteur" name="visiteur" required>
+        <option value="">— Choisir —</option>
+        {% for unvisiteur in lesvisiteurs %}
+          <option value="{{ unvisiteur.id }}"{% if unvisiteur.id == visiteurchoisi %} selected{% endif %}>{{ unvisiteur.nom }} {{ unvisiteur.prenom }}</option>
+        {% endfor %}
+      </select>
+    </p>
+    <p>
+      <label for="mois">Mois</label>
+      <select id="mois" name="mois" required>
+        {% for code, libelle in lesmois %}
+          <option value="{{ code }}"{% if code == moischoisi %} selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </p>
+    <p><input type="submit" value="Afficher la fiche" /></p>
+  </form>
 
   <ul class="filtres" aria-label="Filtrer par état">
     {% for code, libelle in filtres %}
@@ -25,10 +67,10 @@
       {% for fiche in lesfiches %}
         <tr>
           <td>{{ fiche.prenom }} {{ fiche.nom }}</td>
-          <td>{{ fiche.mois|slice(4,2) }}/{{ fiche.mois|slice(0,4) }}</td>
+          <td class="date">{{ fiche.mois|slice(4,2) }}/{{ fiche.mois|slice(0,4) }}</td>
           <td><span class="etat etat--{{ fiche.idEtat|lower }}">{{ fiche.libEtat }}</span></td>
           <td class="montant">{{ fiche.nbJustificatifs }}</td>
-          <td class="montant">{{ fiche.idEtat in ['VA', 'RB'] ? fiche.montantValide ~ ' €' : '—' }}</td>
+          <td class="montant">{{ fiche.idEtat in ['VA', 'MP', 'RB'] ? fiche.montantValide ~ ' €' : '—' }}</td>
           <td class="action">
             <a class="bouton-petit" href="{{ path('pg_gsb_frais_admin_fiche', {'idVisiteur': fiche.idVisiteur, 'mois': fiche.mois}) }}">{{ fiche.idEtat == 'CL' ? 'Traiter' : 'Consulter' }}</a>
           </td>

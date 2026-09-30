@@ -20,7 +20,7 @@
   {% for fiche in lesfiches %}
     {% set ouverte = fiche.idEtat == 'CR' %}
     {% set libelle = nomsMois[(fiche.mois|slice(4,2)) - 1]|capitalize ~ ' ' ~ fiche.mois|slice(0,4) %}
-    {% set badge = { 'CR': 'En cours', 'CL': 'Clôturée', 'VA': 'Validée', 'RB': 'Remboursée' }[fiche.idEtat]|default(fiche.libEtat) %}
+    {% set badge = { 'CR': 'En cours', 'CL': 'Clôturée', 'VA': 'Validée', 'MP': 'En paiement', 'RB': 'Remboursée' }[fiche.idEtat]|default(fiche.libEtat) %}
     {% set choisie = lemois is defined and lemois == fiche.mois %}
     <li>
       {% if ouverte %}

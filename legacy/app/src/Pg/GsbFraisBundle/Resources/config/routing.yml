@@ -62,6 +62,40 @@ pg_gsb_frais_admin_refuserfrais:
     defaults: { _controller: PgGsbFraisBundle:Admin:refuserFrais }
     requirements: { id: '\d+' }
     methods:  [POST]
+
+# --- Ajouts 2026, demandes du sujet ------------------------------------------
+pg_gsb_frais_vehicule:
+    pattern:  /vehicule
+    defaults: { _controller: PgGsbFraisBundle:Vehicule:index }
+pg_gsb_frais_admin_rechercher:
+    pattern:  /admin/rechercher
+    defaults: { _controller: PgGsbFraisBundle:Admin:rechercher }
+pg_gsb_frais_admin_cloturer:
+    pattern:  /admin/fiches/cloturer
+    defaults: { _controller: PgGsbFraisBundle:Admin:cloturerFiches }
+    methods:  [POST]
+pg_gsb_frais_admin_pdflot:
+    pattern:  /admin/fiches/pdf
+    defaults: { _controller: PgGsbFraisBundle:Admin:pdfLot }
+pg_gsb_frais_admin_pdf:
+    pattern:  /admin/fiche/{idVisiteur}/{mois}/pdf
+    defaults: { _controller: PgGsbFraisBundle:Admin:pdf }
+    requirements: { mois: '\d{6}' }
+pg_gsb_frais_admin_corriger:
+    pattern:  /admin/fiche/{idVisiteur}/{mois}/corriger
+    defaults: { _controller: PgGsbFraisBundle:Admin:corrigerForfait }
+    requirements: { mois: '\d{6}' }
+    methods:  [POST]
+pg_gsb_frais_admin_mettreenpaiement:
+    pattern:  /admin/fiche/{idVisiteur}/{mois}/mettre-en-paiement
+    defaults: { _controller: PgGsbFraisBundle:Admin:mettreEnPaiement }
+    requirements: { mois: '\d{6}' }
+    methods:  [POST]
+pg_gsb_frais_admin_reporterfrais:
+    pattern:  /admin/fraishorsforfait/{id}/reporter
+    defaults: { _controller: PgGsbFraisBundle:Admin:reporterFrais }
+    requirements: { id: '\d+' }
+    methods:  [POST]
 pg_gsb_frais_admin_comptes:
     pattern:  /admin/comptes
     defaults: { _controller: PgGsbFraisBundle:Admin:comptes }

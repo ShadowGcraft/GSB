@@ -10,7 +10,7 @@
     {% for unFrais in lesfraishorsforfait %}
       <tr{% if unFrais.refuse %} class="ligne-refusee"{% endif %}>
         <td class="date">{{ unFrais.date }}</td>
-        <td>{{ unFrais.libelle }}{% if unFrais.refuse %} <span class="etiquette-refus">Refusé</span>{% endif %}</td>
+        <td>{{ unFrais.libelle }}{% include 'PgGsbFraisBundle:ListeFrais:_report.html.twig' with {'origine': unFrais.moisOrigine} only %}{% if unFrais.refuse %} <span class="etiquette-refus">Refusé</span>{% endif %}</td>
         <td class="montant">{{ unFrais.montant }} €</td>
         <td class="pj">
           {% for pj in unFrais.justificatifs %}

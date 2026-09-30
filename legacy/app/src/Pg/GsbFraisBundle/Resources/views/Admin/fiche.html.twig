@@ -4,7 +4,12 @@
 {% set modifiable = infos.idEtat == 'CL' %}
 <div id="contenu" class="contenu--admin">
   <p class="fil"><a href="{{ path('pg_gsb_frais_admin_fiches') }}">← Fiches à valider</a></p>
-  <h2>{{ visiteur.prenom }} {{ visiteur.nom }} · fiche {{ nummois }}/{{ numannee }}</h2>
+  <div class="entete-page">
+    <h2>{{ visiteur.prenom }} {{ visiteur.nom }} · fiche {{ nummois }}/{{ numannee }}</h2>
+    {% if infos.idEtat != 'CR' %}
+      <a class="bouton-petit" href="{{ path('pg_gsb_frais_admin_pdf', {'idVisiteur': visiteur.id, 'mois': mois}) }}" target="_blank" rel="noopener">Imprimer (PDF)</a>
+    {% endif %}
+  </div>
   {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' %}
 
   <div class="encadre">
@@ -12,10 +17,20 @@
       <span>État : <strong>{{ infos.libEtat }}</strong> depuis le {{ datemodif }}</span>
       <span>Justificatifs : <strong>{{ infos.nbJustificatifs }}</strong></span>
       <span>Montant dû : <strong>{{ montantcalcule }} €</strong></span>
-      {% if infos.idEtat in ['VA', 'RB'] %}<span>Montant validé : <strong>{{ infos.montantValide }} €</strong></span>{% endif %}
+      {% if infos.idEtat in ['VA', 'MP', 'RB'] %}<span>Montant validé : <strong>{{ infos.montantValide }} €</strong></span>{% endif %}
+    </p>
+    <p class="aide-texte">
+      {% if vehicule %}
+        Véhicule du mois : {{ vehicule.puissance }} {{ vehicule.carburant|lower }}, remboursé {{ vehicule.tarif|number_format(2, ',', ' ') }} € par km.
+      {% else %}
+        Aucun véhicule déclaré pour ce mois : les km gardent l'ancien taux unique.
+      {% endif %}
     </p>
   </div>
 
+  {# Étapes 5 et 6 : sur une fiche clôturée, les quantités se corrigent sur place (RG36, RG37). #}
+  {% if modifiable %}<form method="post" action="{{ path('pg_gsb_frais_admin_corriger', {'idVisiteur': visiteur.id, 'mois': mois}) }}" class="form-corrections">
+    <input type="hidden" name="_jeton" value="{{ jeton }}" />{% endif %}
   <div class="tableau-defilant">
     <table class="listeLegere">
       <caption>Éléments forfaitisés</caption>
@@ -27,14 +42,28 @@
       </tr>
       {% for unfrais in lesfraisforfait %}
         <tr>
-          <td>{{ unfrais.libelle }}</td>
-          <td class="montant">{{ unfrais.quantite }} {{ unfrais.unite }}</td>
+          <td>{% if modifiable %}<label for="frais-{{ unfrais.idfrais }}">{{ unfrais.libelle }}</label>{% else %}{{ unfrais.libelle }}{% endif %}</td>
+          <td class="montant">
+            {% if modifiable %}
+              <span class="qte-saisie">
+                <input type="text" id="frais-{{ unfrais.idfrais }}" name="lesFrais[{{ unfrais.idfrais }}]" class="champ-quantite"
+                       size="6" maxlength="5" inputmode="numeric" pattern="[0-9]*" required value="{{ unfrais.quantite }}" />
+                <span class="qte-saisie__unite">{{ unfrais.unite }}</span>
+              </span>
+            {% else %}
+              {{ unfrais.quantite }} {{ unfrais.unite }}
+            {% endif %}
+          </td>
           <td class="montant">{{ unfrais.montant|number_format(2, '.', ' ') }} €</td>
-          <td class="montant">{{ (unfrais.quantite * unfrais.montant)|number_format(2, '.', ' ') }} €</td>
+          <td class="montant">{{ unfrais.total|number_format(2, '.', ' ') }} €</td>
         </tr>
       {% endfor %}
     </table>
   </div>
+  {% if modifiable %}
+    <p class="piedForm"><input type="submit" value="Enregistrer les quantités" /></p>
+  </form>
+  {% endif %}
 
   <div class="tableau-defilant">
     <table class="listeLegere">
@@ -44,12 +73,12 @@
         <th class="libelle">Libellé</th>
         <th class="montant">Montant</th>
         <th class="pj">Pièces jointes</th>
-        <th class="action"><span class="visuellement-cache">Action</span></th>
+        <th class="action"><span class="visuellement-cache">Actions</span></th>
       </tr>
       {% for unfrais in lesfraishorsforfait %}
         <tr{% if unfrais.refuse %} class="ligne-refusee"{% endif %}>
           <td class="date">{{ unfrais.date }}</td>
-          <td>{{ unfrais.libelle }}{% if unfrais.refuse %} <span class="etiquette-refus">Refusé</span>{% endif %}</td>
+          <td>{{ unfrais.libelle }}{% include 'PgGsbFraisBundle:ListeFrais:_report.html.twig' with {'origine': unfrais.moisOrigine} only %}{% if unfrais.refuse %} <span class="etiquette-refus">Refusé</span>{% endif %}</td>
           <td class="montant">{{ unfrais.montant }} €</td>
           <td class="pj">
             {% for pj in unfrais.justificatifs %}
@@ -64,6 +93,14 @@
                 <input type="hidden" name="_jeton" value="{{ jeton }}" />
                 <button type="submit" class="bouton-petit{{ unfrais.refuse ? '' : ' bouton-petit--danger' }}">{{ unfrais.refuse ? 'Réintégrer' : 'Refuser' }}</button>
               </form>
+              {% if not unfrais.refuse %}
+                {# Facture reçue après le 10 : le frais passe sur la fiche suivante (RG28). #}
+                <form method="post" action="{{ path('pg_gsb_frais_admin_reporterfrais', {'id': unfrais.id}) }}" class="form-inline"
+                      onsubmit="return confirm('Reporter ce frais sur la fiche {{ moissuivant }} ?');">
+                  <input type="hidden" name="_jeton" value="{{ jeton }}" />
+                  <button type="submit" class="bouton-petit" title="Reporter sur la fiche {{ moissuivant }}">Reporter</button>
+                </form>
+              {% endif %}
             {% endif %}
           </td>
         </tr>
@@ -83,12 +120,18 @@
             <label for="montantValide">Montant validé (€)</label>
             <input type="text" id="montantValide" name="montantValide" size="12" inputmode="decimal" value="{{ montantcalcule }}" required />
           </p>
-          <p class="aide-texte">Proposé : forfaits au tarif en vigueur, plus les frais hors forfait non refusés.</p>
+          <p class="aide-texte">Proposé : forfaits au tarif en vigueur, km au tarif du véhicule, plus les frais hors forfait non refusés.</p>
         </fieldset>
       </div>
-      <div class="piedForm"><p><input type="submit" value="Valider et mettre en paiement" /></p></div>
+      <div class="piedForm"><p><input type="submit" value="Valider la fiche" /></p></div>
     </form>
   {% elseif infos.idEtat == 'VA' %}
+    <form method="post" action="{{ path('pg_gsb_frais_admin_mettreenpaiement', {'idVisiteur': visiteur.id, 'mois': mois}) }}"
+          onsubmit="return confirm('Mettre cette fiche en paiement ?');">
+      <input type="hidden" name="_jeton" value="{{ jeton }}" />
+      <div class="piedForm"><p><input type="submit" value="Mettre en paiement" /></p></div>
+    </form>
+  {% elseif infos.idEtat == 'MP' %}
     <form method="post" action="{{ path('pg_gsb_frais_admin_rembourser', {'idVisiteur': visiteur.id, 'mois': mois}) }}"
           onsubmit="return confirm('Confirmer le remboursement de cette fiche ?');">
       <input type="hidden" name="_jeton" value="{{ jeton }}" />

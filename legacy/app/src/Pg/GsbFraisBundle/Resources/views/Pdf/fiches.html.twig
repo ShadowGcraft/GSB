@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+{# Fiches de remboursement au format de l'annexe 1 du sujet, une par page, rendues
+   en PDF par dompdf. Les frais refusés n'y figurent pas (RG39). #}
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Remboursement de frais engagés</title>
+    <style>
+      @page { margin: 16mm 15mm; }
+      body { font-family: "DejaVu Serif", serif; font-size: 10.5pt; color: #111111; }
+      .page { page-break-after: always; }
+      .page--derniere { page-break-after: auto; }
+      .logo { text-align: center; margin-bottom: 6mm; }
+      .logo img { height: 24mm; }
+      .cadre { border: 1.5px solid #333333; padding-bottom: 7mm; }
+      h1 {
+        margin: 0; padding: 2.5mm 0; text-align: center;
+        font-size: 14pt; color: #1F3A7A; border-bottom: 1.5px solid #333333;
+      }
+      .identite { width: 86%; margin: 8mm auto 6mm; border-collapse: collapse; }
+      .identite td { padding: 1.5mm 0; }
+      .identite .intitule { width: 34%; }
+      .identite .matricule { width: 24%; }
+      .frais { width: 86%; margin: 0 auto; border-collapse: collapse; }
+      .frais th, .frais td { border: 1px solid #1F3A7A; padding: 2mm 2.5mm; }
+      .frais th { color: #1F3A7A; font-style: italic; text-align: center; }
+      .frais .section { border-bottom: 0; padding-top: 5mm; }
+      .num { text-align: right; }
+      .vide { font-style: italic; color: #555555; }
+      .total { width: 42%; margin: 7mm 7% 0 auto; border-collapse: collapse; }
+      .total td { border: 1.5px solid #1F3A7A; padding: 2mm 2.5mm; font-weight: bold; }
+      .mentions { width: 86%; margin: 6mm auto 0; font-size: 8.5pt; color: #444444; }
+      .signature { margin: 16mm 0 0 55%; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    {% for fiche in lesfiches %}
+      <div class="page{{ loop.last ? ' page--derniere' }}">
+        <div class="logo"><img src="data:image/jpeg;base64,{{ logo }}" alt="Laboratoire Galaxy-Swiss Bourdin" /></div>
+        <div class="cadre">
+          <h1>REMBOURSEMENT DE FRAIS ENGAGÉS</h1>
+
+          <table class="identite">
+            <tr>
+              <td class="intitule">Visiteur</td>
+              <td class="matricule">{{ fiche.visiteur.id }}</td>
+              <td>{{ fiche.visiteur.prenom }} {{ fiche.visiteur.nom|upper }}</td>
+            </tr>
+            <tr>
+              <td class="intitule">Mois</td>
+              <td colspan="2">{{ fiche.libmois }}</td>
+            </tr>
+          </table>
+
+          <table class="frais">
+            <tr>
+              <th>Frais forfaitaires</th>
+              <th>Quantité</th>
+              <th>Montant unitaire</th>
+              <th>Total</th>
+            </tr>
+            {% for unfrais in fiche.lesfraisforfait %}
+              <tr>
+                <td>{{ unfrais.libelle }}</td>
+                <td class="num">{{ unfrais.quantite }}</td>
+                <td class="num">{{ unfrais.montant|number_format(2, ',', ' ') }}</td>
+                <td class="num">{{ unfrais.total|number_format(2, ',', ' ') }}</td>
+              </tr>
+            {% endfor %}
+            <tr><th colspan="4" class="section">Autres frais</th></tr>
+            <tr>
+              <th>Date</th>
+              <th colspan="2">Libellé</th>
+              <th>Montant</th>
+            </tr>
+            {% for unfrais in fiche.lesfraishorsforfait if not unfrais.refuse %}
+              <tr>
+                <td>{{ unfrais.date }}</td>
+                <td colspan="2">{{ unfrais.libelle }}</td>
+                <td class="num">{{ unfrais.montant|number_format(2, ',', ' ') }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="vide">Aucun frais hors forfait retenu.</td></tr>
+            {% endfor %}
+          </table>
+
+          <table class="total">
+            <tr>
+              <td>TOTAL {{ fiche.nummois }}/{{ fiche.numannee }}</td>
+              <td class="num">{{ fiche.montantcalcule|number_format(2, ',', ' ') }} €</td>
+            </tr>
+            {% if fiche.infos.idEtat in ['VA', 'MP', 'RB'] and fiche.infos.montantValide != fiche.montantcalcule %}
+              <tr>
+                <td>Montant validé</td>
+                <td class="num">{{ fiche.infos.montantValide|number_format(2, ',', ' ') }} €</td>
+              </tr>
+            {% endif %}
+          </table>
+
+          <p class="mentions">
+            {% if fiche.vehicule %}
+              Véhicule : {{ fiche.vehicule.puissance }} {{ fiche.vehicule.carburant|lower }}, {{ fiche.vehicule.tarif|number_format(2, ',', ' ') }} € par km.
+            {% else %}
+              Aucun véhicule déclaré ce mois : ancien taux kilométrique unique.
+            {% endif %}
+            Justificatifs pris en compte : {{ fiche.infos.nbJustificatifs }}.
+            État de la fiche : {{ fiche.infos.libEtat|lower }}.
+          </p>
+        </div>
+
+        <p class="signature">
+          Fait à Paris, le {{ datejour }}<br />
+          Vu l'agent comptable
+        </p>
+      </div>
+    {% endfor %}
+  </body>
+</html>

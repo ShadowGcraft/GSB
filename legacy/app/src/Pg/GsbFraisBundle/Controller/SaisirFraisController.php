@@ -12,6 +12,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SaisirFraisController extends GsbController
 {
+    /** Sans véhicule déclaré, pas de saisie kilométrique (RG20). */
+    const MESSAGE_SANS_VEHICULE = 'Déclarez d\'abord votre véhicule, menu « Mon véhicule » : le remboursement des km dépend de sa puissance fiscale.';
+
     /** Le mois courant, après création de sa fiche si besoin. */
     private function moisCourant()
     {
@@ -34,13 +37,24 @@ class SaisirFraisController extends GsbController
         $idVisiteur = $this->session()->get('id');
         $mois = $this->moisCourant();
         $pdo = $this->pdo();
+        $vehicule = $pdo->getVehiculeDuMois($idVisiteur, $mois);
 
         // Correction directe des totaux du mois, formulaire d'origine.
         if($request->isMethod('POST')){
             $lesFrais = $request->request->get('lesFrais');
             if(is_array($lesFrais) && lesQteFraisValides($lesFrais)){
-                $pdo->majFraisForfait($idVisiteur,$mois,array_map('intval', $lesFrais));
-                $this->ajouteMessage('succesForfait', 'Totaux du mois enregistrés.');
+                $lesFrais = array_map('intval', $lesFrais);
+                $kmEnregistres = 0;
+                foreach ($pdo->getLesFraisForfait($idVisiteur,$mois) as $unFrais) {
+                    if ($unFrais['idfrais'] === 'KM') $kmEnregistres = (int) $unFrais['quantite'];
+                }
+                // Sans véhicule, aucun nouveau km (RG20) ; les autres totaux restent modifiables.
+                if (!$vehicule && isset($lesFrais['KM']) && $lesFrais['KM'] > 0 && $lesFrais['KM'] !== $kmEnregistres) {
+                    $this->ajouteMessage('erreurForfait', self::MESSAGE_SANS_VEHICULE);
+                } else {
+                    $pdo->majFraisForfait($idVisiteur,$mois,$lesFrais);
+                    $this->ajouteMessage('succesForfait', 'Totaux du mois enregistrés.');
+                }
             }
             else{
                 $this->ajouteMessage('erreurForfait', 'Les valeurs des frais doivent être numériques');
@@ -53,6 +67,7 @@ class SaisirFraisController extends GsbController
         return $this->render('PgGsbFraisBundle:SaisirFrais:saisirtouslesfrais.html.twig', array(
             'lesfraisforfait' => $pdo->getLesFraisForfait($idVisiteur,$mois),
             'lesfraishorsforfait' => $pdo->getLesFraisHorsForfait($idVisiteur,$mois),
+            'vehicule' => $vehicule,
             'nummois' => substr($mois,4,2),
             'numannee' => substr($mois,0,4),
             'premierjour' => $aujourdhui->format('Y-m-01'),
@@ -94,6 +109,8 @@ class SaisirFraisController extends GsbController
         }
         if (!isset($lesFrais[$idFrais])) {
             $erreurs[] = 'Choisissez le type de frais à renseigner.';
+        } elseif ($idFrais === 'KM' && !$this->pdo()->getVehiculeDuMois($idVisiteur, $mois)) {
+            $erreurs[] = self::MESSAGE_SANS_VEHICULE;
         }
         if ($quantite === '' || !estEntierPositif($quantite) || (int) $quantite === 0) {
             $erreurs[] = 'La quantité doit être un nombre entier supérieur à zéro.';

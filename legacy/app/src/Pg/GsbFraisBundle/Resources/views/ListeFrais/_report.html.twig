@@ -1,0 +1,3 @@
+{# Frais hors forfait reporté par le comptable depuis la fiche d'un mois précédent (RG29).
+   Attend « origine » : le mois d'origine aaaamm, ou null. #}
+{% if origine %} <span class="etiquette-report">Reporté de {{ origine|slice(4,2) }}/{{ origine|slice(0,4) }}</span>{% endif %}

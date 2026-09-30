@@ -215,10 +215,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   gap: 8px 32px;
 }
 .encadre__etat strong { color: var(--gsb-card-ink); }
+.encadre > :last-child { margin-bottom: 0; }
 
 /* --- tableaux --------------------------------------------------------------- */
 
-.tableau-defilant { width: 100%; overflow-x: auto; margin-bottom: 20px; }
+/* position: relative retient les textes masqués (.visuellement-cache, en
+   position absolue) : sans elle, ils sortent du défilement et élargissent
+   toute la page sur mobile. */
+.tableau-defilant { position: relative; width: 100%; overflow-x: auto; margin-bottom: 20px; }
 .listeLegere { width: 100%; border-collapse: collapse; }
 .listeLegere caption {
   text-align: left;
@@ -230,7 +234,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   padding: 9px 12px;
   text-align: left;
   border-bottom: 1px solid var(--gsb-panel-line);
-  overflow-wrap: anywhere;
+  /* break-word et non anywhere : un mot ne se coupe que s'il ne tient pas seul.
+     Sur mobile, le tableau défile au lieu d'écrire les noms lettre par lettre. */
+  overflow-wrap: break-word;
 }
 .listeLegere th {
   background: var(--gsb-card-fill);
@@ -249,6 +255,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 fieldset {
   margin: 0;
+  min-width: 0;                 /* par défaut min-content : déborde sur mobile */
   padding: 16px 20px;
   border: 1px solid var(--gsb-panel-line);
   border-radius: 10px;
@@ -440,9 +447,10 @@ details.correction[open] summary { margin-bottom: 10px; }
 /* --- pièces jointes ------------------------------------------------------------ */
 
 .listeLegere .pj { min-width: 180px; }
+.listeLegere th.libelle { min-width: 11em; }
 .liste-pj { list-style: none; margin: 0 0 6px; padding: 0; }
 .liste-pj li { display: flex; align-items: center; gap: 4px; }
-.pj a { color: var(--gsb-card-ink); overflow-wrap: anywhere; }
+.pj a { color: var(--gsb-card-ink); overflow-wrap: break-word; }
 .ajout-pj { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
 .listeLegere .date { white-space: nowrap; }
 .ajout-pj label { flex: none; position: relative; }
@@ -464,11 +472,67 @@ input[type=file]::file-selector-button {
 .etiquette-refus, .etat {
   display: inline-block; padding: 1px 8px; border-radius: 999px;
   font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-  text-decoration: none;
+  text-decoration: none; white-space: nowrap;
 }
 .etiquette-refus { background: var(--gsb-danger); color: #FFFFFF; }
 .etat { background: rgba(255, 255, 255, .14); }
 .etat--cl { background: var(--gsb-accent); color: var(--gsb-accent-ink); }
+.etiquette-report {
+  display: inline-block; padding: 1px 8px; border-radius: 999px;
+  border: 1px solid var(--gsb-accent); color: var(--gsb-accent);
+  font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.ligne-refusee .etiquette-report { text-decoration: none; }
+
+/* --- demandes du sujet : véhicule, campagne, recherche, corrections ---------- */
+
+.avertissement {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .22);
+  border-left: 6px solid var(--gsb-accent);
+}
+.avertissement a { color: var(--gsb-card-ink); font-weight: 700; }
+.campagne {
+  margin: 0 0 20px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .22);
+  border-left: 6px solid var(--gsb-accent);
+}
+#contenu .campagne p { margin: 0 0 10px; display: block; }
+#contenu .campagne p:last-child { margin: 0; }
+#contenu form.recherche {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px;
+  margin: 0 0 22px; padding: 14px 18px;
+  border: 1px solid var(--gsb-panel-line); border-radius: 10px;
+}
+#contenu form.recherche > p { margin: 0; flex-direction: column; align-items: flex-start; gap: 4px; }
+.recherche label { flex: none; font-weight: 700; }
+.recherche select { min-width: 13em; }
+
+/* Titre de page suivi d'une action (Imprimer), sur la même ligne. */
+.entete-page {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 10px 16px; margin-bottom: 16px;
+}
+#contenu .entete-page h2 { margin: 0; }
+
+/* Correction des quantités : champ compact, unité de largeur fixe, pour que
+   les champs s'alignent d'une ligne à l'autre. */
+.qte-saisie { display: inline-flex; align-items: center; gap: 8px; }
+#contenu .champ-quantite { width: 5.5em; padding: 4px 8px; text-align: right; }
+.qte-saisie__unite { min-width: 5.5em; text-align: left; }
+.form-corrections { margin-bottom: 28px; }
+.form-corrections .tableau-defilant { margin-bottom: 0; }
+.form-corrections .piedForm { margin-top: 14px; }
+
+@media (max-width: 900px) {
+  .recherche select { min-width: 0; width: 100%; }
+  #contenu form.recherche > p { flex: 1 1 100%; }
+}
 .etat--inactif { background: var(--gsb-danger); color: #FFFFFF; }
 .ligne-inactive td { opacity: .65; }
 .ligne-inactive td.action { opacity: 1; }

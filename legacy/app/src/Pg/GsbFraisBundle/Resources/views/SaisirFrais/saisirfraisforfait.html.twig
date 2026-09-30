@@ -2,6 +2,14 @@
   <h2>Renseigner ma fiche de frais du mois {{ nummois }}/{{ numannee }}</h2>
   {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' with {'leserreurs': leserreursforfait, 'lessucces': lessuccesforfait} %}
 
+  {# Sans véhicule déclaré, la saisie des km est bloquée (RG20). #}
+  {% if not vehicule %}
+    <p class="avertissement" id="sansVehicule">
+      Aucun véhicule déclaré : la saisie des kilomètres est bloquée, car leur remboursement dépend
+      de la puissance fiscale. <a href="{{ path('pg_gsb_frais_vehicule') }}">Déclarer mon véhicule</a>
+    </p>
+  {% endif %}
+
   {# Saisie guidée : le jour d'abord, puis le type de frais, puis la quantité.
      Sans JavaScript, les trois champs sont simplement tous actifs. #}
   <form action="{{ path('pg_gsb_frais_ajouterfraisforfait') }}" method="POST" id="saisieGuidee">
@@ -26,7 +34,14 @@
               <dl>
                 {% for unfrais in lesfraisforfait %}
                   <div class="aide__item" data-frais="{{ unfrais.idfrais }}">
-                    <dt>{{ unfrais.libelle }} <span class="aide__tarif">{{ unfrais.montant|number_format(2, ',', ' ') }} € par {{ unfrais.unite|default('unité')|replace({'(s)': ''}) }}</span></dt>
+                    <dt>{{ unfrais.libelle }} <span class="aide__tarif">
+                      {%- if unfrais.idfrais == 'KM' and not vehicule -%}
+                        tarif selon votre véhicule, à déclarer
+                      {%- else -%}
+                        {{ unfrais.montant|number_format(2, ',', ' ') }} € par {{ unfrais.unite|default('unité')|replace({'(s)': ''}) }}
+                        {%- if unfrais.idfrais == 'KM' %} ({{ vehicule.puissance }} {{ vehicule.carburant|lower }}){% endif %}
+                      {%- endif -%}
+                    </span></dt>
                     <dd>{{ unfrais.description }}</dd>
                   </div>
                 {% endfor %}
@@ -35,7 +50,11 @@
             <select id="idFrais" name="idFrais" required>
               <option value="">— Choisir —</option>
               {% for unfrais in lesfraisforfait %}
-                <option value="{{ unfrais.idfrais }}" data-unite="{{ unfrais.unite }}">{{ unfrais.libelle }}</option>
+                {% if unfrais.idfrais == 'KM' and not vehicule %}
+                  <option value="{{ unfrais.idfrais }}" disabled>{{ unfrais.libelle }} (véhicule à déclarer)</option>
+                {% else %}
+                  <option value="{{ unfrais.idfrais }}" data-unite="{{ unfrais.unite }}">{{ unfrais.libelle }}</option>
+                {% endif %}
               {% endfor %}
             </select>
           </li>
@@ -82,7 +101,8 @@
             <p>
               <label for="frais-{{ unfrais.idfrais }}">{{ unfrais.libelle }}</label>
               <input type="text" id="frais-{{ unfrais.idfrais }}" name="lesFrais[{{ unfrais.idfrais }}]"
-                     size="10" maxlength="5" inputmode="numeric" value="{{ unfrais.quantite }}" />
+                     size="10" maxlength="5" inputmode="numeric" value="{{ unfrais.quantite }}"
+                     {%- if unfrais.idfrais == 'KM' and not vehicule %} readonly aria-describedby="sansVehicule"{% endif %} />
             </p>
           {% endfor %}
         </fieldset>

@@ -1,0 +1,63 @@
+{% extends "PgGsbFraisBundle::accueil.html.twig" %}
+{% block body %}
+<div id="contenu">
+  <h2>Mon véhicule</h2>
+  {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' %}
+
+  <div class="encadre">
+    {% if actuel %}
+      <p class="encadre__etat">
+        <span>Véhicule actuel : <strong>{{ actuel.puissance }} {{ actuel.carburant|lower }}</strong>, depuis le {{ actuel.dateDebut }}</span>
+        <span>Remboursement : <strong>{{ actuel.tarif|number_format(2, ',', ' ') }} € par km</strong></span>
+      </p>
+    {% else %}
+      <p class="encadre__etat"><span><strong>Aucun véhicule déclaré.</strong> La saisie des kilomètres reste bloquée tant que vous n'avez pas déclaré votre véhicule.</span></p>
+    {% endif %}
+    <p class="aide-texte">Le remboursement des kilomètres dépend de la puissance fiscale et du carburant de votre véhicule.
+      Un changement vaut pour la fiche du mois en cours ; les fiches des mois précédents gardent leur taux.</p>
+  </div>
+
+  <form method="post" action="{{ path('pg_gsb_frais_vehicule') }}">
+    <input type="hidden" name="_jeton" value="{{ csrf_token('gsb_vehicule') }}" />
+    <div class="corpsForm">
+      <fieldset>
+        <legend>{{ actuel ? 'Changer de véhicule' : 'Déclarer mon véhicule' }}</legend>
+        <p>
+          <label for="idBaremeKm">Puissance et carburant</label>
+          <select id="idBaremeKm" name="idBaremeKm" required>
+            <option value="">— Choisir —</option>
+            {% for ligne in lebareme %}
+              <option value="{{ ligne.id }}"{% if actuel and actuel.idBaremeKm == ligne.id %} selected{% endif %}>
+                {{ ligne.puissance }} {{ ligne.carburant|lower }} · {{ ligne.tarif|number_format(2, ',', ' ') }} € / km
+              </option>
+            {% endfor %}
+          </select>
+        </p>
+      </fieldset>
+    </div>
+    <div class="piedForm"><p><input type="submit" value="Enregistrer" /></p></div>
+  </form>
+
+  {% if lesvehicules|length > 1 %}
+    <div class="tableau-defilant">
+      <table class="listeLegere">
+        <caption>Historique</caption>
+        <tr>
+          <th>Véhicule</th>
+          <th class="montant">Tarif</th>
+          <th class="date">Du</th>
+          <th class="date">Au</th>
+        </tr>
+        {% for unvehicule in lesvehicules %}
+          <tr>
+            <td>{{ unvehicule.puissance }} {{ unvehicule.carburant|lower }}</td>
+            <td class="montant">{{ unvehicule.tarif|number_format(2, ',', ' ') }} € / km</td>
+            <td class="date">{{ unvehicule.dateDebut }}</td>
+            <td class="date">{{ unvehicule.dateFin ?: 'aujourd\'hui' }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

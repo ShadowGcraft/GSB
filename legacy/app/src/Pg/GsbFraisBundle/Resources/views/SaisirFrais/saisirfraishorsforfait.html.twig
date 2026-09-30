@@ -13,7 +13,7 @@
       {% for unfrais in lesfraishorsforfait %}
         <tr>
           <td class="date">{{ unfrais.date }}</td>
-          <td>{{ unfrais.libelle }}</td>
+          <td>{{ unfrais.libelle }}{% include 'PgGsbFraisBundle:ListeFrais:_report.html.twig' with {'origine': unfrais.moisOrigine} only %}</td>
           <td class="montant">{{ unfrais.montant }} €</td>
           <td class="pj">
             {% if unfrais.justificatifs %}

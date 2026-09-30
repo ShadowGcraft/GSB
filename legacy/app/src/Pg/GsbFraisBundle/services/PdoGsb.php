@@ -27,6 +27,7 @@ class PdoGsb{
                         'evolutions-2026.sql' => "select count(*) from information_schema.tables
                                 where table_schema = database() and table_name = 'justificatif'",
                         'evolutions-2026-comptable.sql' => "select count(*) from visiteur where id = 'cpt'",
+                        'evolutions-2026-sujet.sql' => "select count(*) from etat where id = 'MP'",
                 );
                 foreach ($evolutions as $fichier => $temoin) {
                         if (PdoGsb::$monPdo->query($temoin)->fetchColumn() > 0) {
@@ -124,20 +125,57 @@ class PdoGsb{
 		return $laLigne['nb'];
 	}
 /**
+ * Condition SQL qui retient les véhicules d'un visiteur valides pendant un mois :
+ * début au plus tard le dernier jour du mois, fin nulle ou au plus tôt le premier
+ * jour du mois (RG17).
+ * @param $visiteur expression SQL de l'identifiant du visiteur
+ * @param $premierJour expression SQL du premier jour du mois
+ * @param $dernierJour expression SQL du dernier jour du mois
+ */
+        private static function conditionVehiculeDuMois($visiteur, $premierJour, $dernierJour){
+                return "vehicule.idVisiteur = $visiteur
+                        and vehicule.dateDebut <= $dernierJour
+                        and (vehicule.dateFin is null or vehicule.dateFin >= $premierJour)";
+        }
+
+/**
+ * Montant unitaire d'une ligne forfaitisée, en SQL, dans une requête qui joint
+ * lignefraisforfait et fraisforfait.
+ *
+ * Pour le kilométrage : le tarif du dernier véhicule valide pendant le mois de la
+ * fiche (RG16, RG17). Un mois sans véhicule déclaré date d'avant le barème : il
+ * garde l'ancien taux unique du référentiel. La saisie de nouveaux km sans
+ * véhicule est bloquée par le contrôleur (RG20).
+ */
+        private static function montantUnitaireSql(){
+                $premierJour = "str_to_date(concat(lignefraisforfait.mois, '01'), '%Y%m%d')";
+                $tarifVehicule = "select baremekm.tarif from vehicule
+                        inner join baremekm on baremekm.id = vehicule.idBaremeKm
+                        where ".self::conditionVehiculeDuMois('lignefraisforfait.idVisiteur', $premierJour, "last_day($premierJour)")."
+                        order by vehicule.dateDebut desc, vehicule.id desc limit 1";
+                return "(case when fraisforfait.id = 'KM'
+                        then coalesce(($tarifVehicule), fraisforfait.montant)
+                        else fraisforfait.montant end)";
+        }
+
+/**
  * Retourne sous forme d'un tableau associatif toutes les lignes de frais au forfait
  * concernées par les deux arguments
- 
- * @param $idVisiteur 
+
+ * @param $idVisiteur
  * @param $mois sous la forme aaaamm
- * @return l'id, le libelle et la quantité sous la forme d'un tableau associatif 
+ * @return l'id, le libelle, la quantité, le montant unitaire et le total de la ligne,
+ *         arrondi au centime (RG8), sous la forme d'un tableau associatif
 */
 	public function getLesFraisForfait($idVisiteur, $mois){
+		$montant = self::montantUnitaireSql();
 		$req = "select fraisforfait.id as idfrais, fraisforfait.libelle as libelle,
-		fraisforfait.montant as montant, fraisforfait.description as description, fraisforfait.unite as unite,
+		$montant as montant, round(lignefraisforfait.quantite * $montant, 2) as total,
+		fraisforfait.description as description, fraisforfait.unite as unite,
 		lignefraisforfait.quantite as quantite from lignefraisforfait inner join fraisforfait
 		on fraisforfait.id = lignefraisforfait.idfraisforfait
-		where lignefraisforfait.idvisiteur = :idVisiteur and lignefraisforfait.mois= :mois 
-		order by lignefraisforfait.idfraisforfait";	
+		where lignefraisforfait.idvisiteur = :idVisiteur and lignefraisforfait.mois= :mois
+		order by lignefraisforfait.idfraisforfait";
 		$stmt = PdoGsb::$monPdo->prepare($req);
                 $stmt->bindParam(':idVisiteur', $idVisiteur);
 		$stmt->bindParam(':mois', $mois);
@@ -171,11 +209,12 @@ class PdoGsb{
 	public function majFraisForfait($idVisiteur, $mois, $lesFrais){
 		$lesCles = array_keys($lesFrais);
 		foreach($lesCles as $unIdFrais){
-			$qte = $lesFrais[$unIdFrais];
-			$req = "update lignefraisforfait set lignefraisforfait.quantite = $qte
+			$req = "update lignefraisforfait set lignefraisforfait.quantite = :qte
 			where lignefraisforfait.idvisiteur = :idVisiteur and lignefraisforfait.mois = :mois
 			and lignefraisforfait.idfraisforfait = :unIdFrais";
                          $stmt = PdoGsb::$monPdo->prepare($req);
+                        // Liée plutôt que concaténée : le comptable corrige aussi ces quantités.
+                        $stmt->bindValue(':qte', (int) $lesFrais[$unIdFrais], PDO::PARAM_INT);
                         $stmt->bindParam(':idVisiteur', $idVisiteur);
                         $stmt->bindParam(':mois', $mois);
                          $stmt->bindParam(':unIdFrais', $unIdFrais);
@@ -253,7 +292,19 @@ class PdoGsb{
                                 $this->majEtatFicheFrais($idVisiteur, $dernierMois,'CL');
 
                 }
-                $req = "insert into fichefrais(idvisiteur,mois,nbJustificatifs,montantValide,dateModif,idEtat) 
+                $this->creeFicheFrais($idVisiteur, $mois);
+        }
+/**
+ * Crée une fiche de frais à l'état 'CR' et ses lignes de frais au forfait à zéro,
+ * sans clôturer aucune autre fiche
+ *
+ * Sert aussi au report d'un frais hors forfait sur un mois dont la fiche
+ * n'existe pas encore (RG28).
+ * @param $idVisiteur
+ * @param $mois sous la forme aaaamm
+*/
+        public function creeFicheFrais($idVisiteur,$mois){
+                $req = "insert into fichefrais(idvisiteur,mois,nbJustificatifs,montantValide,dateModif,idEtat)
                 values(:idVisiteur,:mois,0,0,now(),'CR')";
                 $stmt = PdoGsb::$monPdo->prepare($req);
                 $stmt->bindParam(':idVisiteur', $idVisiteur);
@@ -514,13 +565,15 @@ class PdoGsb{
 
 /**
  * Recalcule le nombre de justificatifs d'une fiche : celui des pièces jointes
+ * pris en compte dans le remboursement, donc hors frais refusés (RG26)
  * @param $idVisiteur
  * @param $mois sous la forme aaaamm
  */
         public function recalculeNbJustificatifs($idVisiteur, $mois){
                 $req = "select count(*) from justificatif inner join lignefraishorsforfait
                         on lignefraishorsforfait.id = justificatif.idFraisHorsForfait
-                        where lignefraishorsforfait.idvisiteur = :idVisiteur and lignefraishorsforfait.mois = :mois";
+                        where lignefraishorsforfait.idvisiteur = :idVisiteur and lignefraishorsforfait.mois = :mois
+                        and lignefraishorsforfait.refuse = 0";
                 $stmt = PdoGsb::$monPdo->prepare($req);
                 $stmt->bindParam(':idVisiteur', $idVisiteur);
                 $stmt->bindParam(':mois', $mois);
@@ -555,12 +608,14 @@ class PdoGsb{
         }
 
 /**
- * Montant dû pour une fiche : forfaits au tarif du référentiel, plus les
- * frais hors forfait non refusés
+ * Montant dû pour une fiche : forfaits au tarif du référentiel, kilométrage au
+ * tarif du véhicule, chaque ligne arrondie au centime, plus les frais hors
+ * forfait non refusés (RG7, RG8)
  */
         public function getMontantCalcule($idVisiteur, $mois){
+                $montant = self::montantUnitaireSql();
                 $req = "select
-                          (select coalesce(sum(lignefraisforfait.quantite * fraisforfait.montant), 0)
+                          (select coalesce(sum(round(lignefraisforfait.quantite * $montant, 2)), 0)
                            from lignefraisforfait inner join fraisforfait on fraisforfait.id = lignefraisforfait.idfraisforfait
                            where lignefraisforfait.idvisiteur = :v1 and lignefraisforfait.mois = :m1)
                         + (select coalesce(sum(montant), 0) from lignefraishorsforfait
@@ -670,6 +725,170 @@ class PdoGsb{
                 $stmt->bindValue(':actif', $actif ? 1 : 0, PDO::PARAM_INT);
                 $stmt->bindParam(':id', $id);
                 $stmt->execute();
+        }
+
+/* ---------------------------------------------------------------------------
+ * Ajouts 2026, demandes du sujet : campagne de validation, report, véhicule.
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Les visiteurs médicaux, pour le choix du visiteur par le comptable
+ * @return un tableau associatif : id, nom, prenom
+ */
+        public function getLesVisiteurs(){
+                $req = "select id, nom, prenom from visiteur where role = 'visiteur' order by nom, prenom";
+                return PdoGsb::$monPdo->query($req)->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Nombre de fiches encore en cours de saisie pour un mois écoulé
+ * @param $moisCourant sous la forme aaaamm
+ */
+        public function compteFichesACloturer($moisCourant){
+                $stmt = PdoGsb::$monPdo->prepare("select count(*) from fichefrais where idEtat = 'CR' and mois < :mois");
+                $stmt->bindParam(':mois', $moisCourant);
+                $stmt->execute();
+                return (int) $stmt->fetchColumn();
+        }
+
+/**
+ * Script de début de campagne : clôture toutes les fiches des mois écoulés encore
+ * en cours de saisie, tous visiteurs confondus. Sans effet sur les fiches plus
+ * avancées, il peut être relancé (RG32).
+ * @param $moisCourant sous la forme aaaamm
+ * @return le nombre de fiches clôturées
+ */
+        public function clotureFichesEcoulees($moisCourant){
+                $stmt = PdoGsb::$monPdo->prepare("update fichefrais set idEtat = 'CL', dateModif = now()
+                        where idEtat = 'CR' and mois < :mois");
+                $stmt->bindParam(':mois', $moisCourant);
+                $stmt->execute();
+                return $stmt->rowCount();
+        }
+
+/**
+ * Les fiches d'un mois dont la saisie est terminée, pour l'impression en lot
+ * @param $mois sous la forme aaaamm
+ * @return un tableau associatif : idVisiteur, nom, prenom
+ */
+        public function getLesFichesClotureesDuMois($mois){
+                $req = "select fichefrais.idVisiteur as idVisiteur, visiteur.nom as nom, visiteur.prenom as prenom
+                        from fichefrais inner join visiteur on visiteur.id = fichefrais.idVisiteur
+                        where fichefrais.mois = :mois and fichefrais.idEtat <> 'CR'
+                        order by visiteur.nom, visiteur.prenom";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':mois', $mois);
+                $stmt->execute();
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Bascule un frais hors forfait sur une autre fiche du même visiteur. La ligne
+ * garde sa date d'engagement et retient le mois de sa fiche d'origine (RG28, RG29).
+ * @param $idFrais
+ * @param $moisCible sous la forme aaaamm
+ */
+        public function reporteFraisHorsForfait($idFrais, $moisCible){
+                // moisOrigine est affecté avant mois : MySQL évalue le SET de gauche à droite.
+                $req = "update lignefraishorsforfait set moisOrigine = coalesce(moisOrigine, mois), mois = :cible
+                        where id = :id";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':cible', $moisCible);
+                $stmt->bindParam(':id', $idFrais);
+                $stmt->execute();
+        }
+
+/**
+ * Le barème kilométrique, du taux le plus bas au plus haut par carburant
+ * @return un tableau associatif : id, puissance, carburant, tarif
+ */
+        public function getLeBaremeKm(){
+                $req = "select id, puissance, carburant, tarif from baremekm order by carburant, tarif";
+                return PdoGsb::$monPdo->query($req)->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Les véhicules déclarés par un visiteur, le plus récent d'abord
+ * @return un tableau associatif : id, idBaremeKm, dateDebut, dateFin, puissance, carburant, tarif
+ */
+        public function getLesVehicules($idVisiteur){
+                $req = "select vehicule.id, vehicule.idBaremeKm, vehicule.dateDebut, vehicule.dateFin,
+                        baremekm.puissance, baremekm.carburant, baremekm.tarif
+                        from vehicule inner join baremekm on baremekm.id = vehicule.idBaremeKm
+                        where vehicule.idVisiteur = :idVisiteur
+                        order by vehicule.dateDebut desc, vehicule.id desc";
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':idVisiteur', $idVisiteur);
+                $stmt->execute();
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Le véhicule dont le tarif s'applique au kilométrage d'un mois : le dernier
+ * déclaré parmi ceux valides pendant ce mois (RG17)
+ * @param $idVisiteur
+ * @param $mois sous la forme aaaamm
+ * @return la ligne, ou false si aucun véhicule n'était déclaré ce mois-là
+ */
+        public function getVehiculeDuMois($idVisiteur, $mois){
+                $req = "select vehicule.id, vehicule.idBaremeKm, vehicule.dateDebut, vehicule.dateFin,
+                        baremekm.puissance, baremekm.carburant, baremekm.tarif
+                        from vehicule inner join baremekm on baremekm.id = vehicule.idBaremeKm
+                        where ".self::conditionVehiculeDuMois(':idVisiteur', ':premierJour', ':dernierJour')."
+                        order by vehicule.dateDebut desc, vehicule.id desc limit 1";
+                $premierJour = substr($mois, 0, 4).'-'.substr($mois, 4, 2).'-01';
+                $stmt = PdoGsb::$monPdo->prepare($req);
+                $stmt->bindParam(':idVisiteur', $idVisiteur);
+                $stmt->bindValue(':premierJour', $premierJour);
+                $stmt->bindValue(':dernierJour', date('Y-m-t', strtotime($premierJour)));
+                $stmt->execute();
+                return $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+/**
+ * Déclare le véhicule actuel d'un visiteur, à compter d'aujourd'hui (RG18, RG19).
+ *
+ * Le véhicule précédent prend fin la veille : les mois déjà écoulés gardent
+ * leur taux. Une seconde déclaration le même jour corrige la première.
+ * @param $idVisiteur
+ * @param $idBaremeKm ligne du barème : puissance fiscale et carburant
+ * @return faux si ce véhicule est déjà le véhicule actuel
+ */
+        public function declareVehicule($idVisiteur, $idBaremeKm){
+                $lesVehicules = $this->getLesVehicules($idVisiteur);
+                $actuel = null;
+                foreach ($lesVehicules as $unVehicule) {
+                        if ($unVehicule['dateFin'] === null) {
+                                $actuel = $unVehicule;
+                                break;
+                        }
+                }
+                if ($actuel && $actuel['idBaremeKm'] === $idBaremeKm) {
+                        return false;
+                }
+                $aujourdhui = date('Y-m-d');
+                PdoGsb::$monPdo->beginTransaction();
+                if ($actuel && $actuel['dateDebut'] === $aujourdhui) {
+                        $stmt = PdoGsb::$monPdo->prepare("update vehicule set idBaremeKm = :bareme where id = :id");
+                        $stmt->bindParam(':bareme', $idBaremeKm);
+                        $stmt->bindParam(':id', $actuel['id']);
+                        $stmt->execute();
+                } else {
+                        if ($actuel) {
+                                $stmt = PdoGsb::$monPdo->prepare("update vehicule set dateFin = :hier where id = :id");
+                                $stmt->bindValue(':hier', date('Y-m-d', strtotime('-1 day')));
+                                $stmt->bindParam(':id', $actuel['id']);
+                                $stmt->execute();
+                        }
+                        $stmt = PdoGsb::$monPdo->prepare("insert into vehicule (idVisiteur, idBaremeKm, dateDebut)
+                                values (:idVisiteur, :bareme, :debut)");
+                        $stmt->bindParam(':idVisiteur', $idVisiteur);
+                        $stmt->bindParam(':bareme', $idBaremeKm);
+                        $stmt->bindParam(':debut', $aujourdhui);
+                        $stmt->execute();
+                }
+                PdoGsb::$monPdo->commit();
+                return true;
         }
 }
 ?>
