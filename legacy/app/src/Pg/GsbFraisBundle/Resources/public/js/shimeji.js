@@ -4,7 +4,7 @@
    Une page ne peut pas déplacer le vrai curseur : il est masqué, un faux part
    dans la gueule de l'animal, et aucun clic n'atteint la page pendant le vol.
    Secouer la souris lui fait lâcher prise ; on peut aussi attraper les animaux
-   et les lancer. Ils n'arrivent qu'une fois le faux captcha passé. */
+   et les lancer. H + J en même temps fait venir un animal de plus. */
 (function () {
   if (!window.requestAnimationFrame || !window.matchMedia) return;
 
@@ -354,29 +354,54 @@
     window.requestAnimationFrame(boucle);
   }
 
-  function demarre() {
-    document.body.appendChild(scene);
-    document.body.appendChild(bouclier);
-    document.body.appendChild(curseur);
-    bestioles.push(new Bestiole('capybara', true), new Bestiole('castor', false));
-    window.addEventListener('resize', function () {
-      for (var i = 0; i < bestioles.length; i++) bestioles[i].mesure();
-    });
-    window.requestAnimationFrame(function (t) {
-      avant = t;
-      window.requestAnimationFrame(boucle);
-    });
+  // --- un de chaque au départ, puis un de plus à chaque H + J ---
+
+  var MAX_ANIMAUX = 30;   // au-delà, la page rame
+
+  function ajoute(espece, depuisLaGauche) {
+    if (bestioles.length < MAX_ANIMAUX) bestioles.push(new Bestiole(espece, depuisLaGauche));
   }
 
-  // Le faux captcha d'abord, s'il est là : ils arrivent quand il disparaît.
-  if (document.querySelector('.faux-captcha')) {
-    var guet = new MutationObserver(function () {
-      if (document.querySelector('.faux-captcha')) return;
-      guet.disconnect();
-      demarre();
-    });
-    guet.observe(document.body, { childList: true });
-  } else {
-    demarre();
+  // Pas pendant une saisie : taper vite « hj » dans un champ ne fait rien venir.
+  function enSaisie(el) {
+    return !!el && (el.isContentEditable || el.matches('textarea, select, input:not([type=checkbox])'
+      + ':not([type=radio]):not([type=button]):not([type=submit]):not([type=reset]):not([type=file])'));
   }
+
+  // e.code : la position des touches, la même en AZERTY et en QWERTY.
+  var enfoncees = {}, combinaison = false;
+  document.addEventListener('keydown', function (e) {
+    if (e.code !== 'KeyH' && e.code !== 'KeyJ') return;
+    enfoncees[e.code] = true;
+    // Une fois par appui : la répétition d'une touche tenue ne compte pas, et
+    // Ctrl, Alt ou Cmd laissent leurs raccourcis au navigateur.
+    if (enfoncees.KeyH && enfoncees.KeyJ && !combinaison
+        && !e.ctrlKey && !e.altKey && !e.metaKey && !enSaisie(document.activeElement)) {
+      combinaison = true;
+      ajoute(Math.random() < 0.5 ? 'capybara' : 'castor', Math.random() < 0.5);
+    }
+  });
+  document.addEventListener('keyup', function (e) {
+    if (e.code !== 'KeyH' && e.code !== 'KeyJ') return;
+    enfoncees[e.code] = false;
+    combinaison = false;
+  });
+  // Touches relâchées hors de la fenêtre : on repart de zéro.
+  window.addEventListener('blur', function () {
+    enfoncees = {};
+    combinaison = false;
+  });
+
+  document.body.appendChild(scene);
+  document.body.appendChild(bouclier);
+  document.body.appendChild(curseur);
+  ajoute('capybara', true);
+  ajoute('castor', false);
+  window.addEventListener('resize', function () {
+    for (var i = 0; i < bestioles.length; i++) bestioles[i].mesure();
+  });
+  window.requestAnimationFrame(function (t) {
+    avant = t;
+    window.requestAnimationFrame(boucle);
+  });
 })();
