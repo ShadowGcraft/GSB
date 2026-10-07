@@ -1,0 +1,178 @@
+{# Formulaire unique « Nouvelle dépense » : le jour, la catégorie, puis le prix.
+   La catégorie décide de la suite : un forfait demande une quantité, au tarif
+   fixé par GSB ; toute autre dépense, le montant payé et la facture. En base,
+   les deux restent rangés à part (lignefraisforfait, lignefraishorsforfait).
+   Sans JavaScript, les deux blocs de l'étape 3 restent affichés : le serveur ne
+   lit que celui de la catégorie choisie, et refait chaque contrôle. Leurs champs
+   n'ont donc aucune contrainte ici (required, pattern) : saisie.js les pose sur
+   le seul bloc utile, pour qu'un champ de l'autre bloc ne bloque pas l'envoi.
+   Après une erreur, « saisie » ramène les valeurs refusées. #}
+{% set choisie = saisie.categorie|default('') %}
+
+{# Sans véhicule déclaré, pas de kilomètres (RG20). #}
+{% if not vehicule %}
+  <p class="avertissement" id="sansVehicule">
+    Aucun véhicule déclaré : les kilomètres sont bloqués, car leur remboursement dépend
+    de la puissance fiscale. <a href="{{ path('pg_gsb_frais_vehicule') }}">Déclarer mon véhicule</a>
+  </p>
+{% endif %}
+
+<form action="{{ path('pg_gsb_frais_ajouterfrais') }}" method="post" enctype="multipart/form-data" id="nouveauFrais">
+  <ol class="etapes">
+    <li class="etape">
+      <label for="jour"><span class="etape__num" aria-hidden="true">1</span> Jour</label>
+      {# Le minimum passe au 1er du mois quand un forfait est choisi (saisie.js). #}
+      <input type="date" id="jour" name="jour" required value="{{ saisie.jour|default(aujourdhui) }}"
+             min="{{ ilyaunan }}" max="{{ dernierjour }}" aria-describedby="jourAide"
+             data-aujourdhui="{{ aujourdhui }}" data-min-forfait="{{ premierjour }}" data-min-depense="{{ ilyaunan }}" />
+      <small class="aide-texte" id="jourAide">Aujourd'hui par défaut. Tout jour de {{ libmois|lower }} convient,
+        avant ou après aujourd'hui ; une dépense au prix payé peut aussi dater de moins d'un an.</small>
+    </li>
+
+    <li class="etape etape--large">
+      <div class="categories" role="radiogroup" aria-labelledby="titreCategories">
+        <div class="categories__entete">
+          <span class="categories__titre">
+            <span id="titreCategories"><span class="etape__num" aria-hidden="true">2</span> Catégorie</span>
+            {# Affiché par saisie.js, qui replie alors l'aide. #}
+            <button type="button" class="aide__bouton" id="aideBouton" hidden
+                    aria-expanded="false" aria-controls="aidePanneau" title="Forfait ou prix payé : comment choisir">
+              ?<span class="visuellement-cache"> Forfait ou prix payé : comment choisir</span>
+            </button>
+          </span>
+          {# Affiché par saisie.js : sans JavaScript, la grille reste complète. #}
+          <input type="search" id="filtreCategories" class="categories__filtre" placeholder="Rechercher : hôtel, km, uber…"
+                 aria-label="Rechercher une catégorie" autocomplete="off" hidden />
+        </div>
+
+        <div class="aide__panneau" id="aidePanneau">
+          <p class="aide__groupe">Au forfait : tarif fixé par GSB, sans facture</p>
+          {# Pourquoi un tarif fixe : cahier des charges, § 1.2 (RG9, RG10). #}
+          <p class="aide__item">Les prix d'hôtel et de restaurant varient beaucoup d'une ville à l'autre.
+            GSB a donc fixé chaque tarif d'après une étude des prix pratiqués, dans la fourchette haute :
+            dans les conditions habituelles, le forfait couvre la dépense. Vous indiquez une quantité,
+            sans facture à fournir.</p>
+          <dl>
+            {% for unfrais in lesfraisforfait %}
+              <div class="aide__item">
+                <dt>{{ unfrais.libelle }} <span class="aide__tarif">
+                  {%- if unfrais.idfrais == 'KM' and not vehicule -%}
+                    tarif selon votre véhicule, à déclarer
+                  {%- else -%}
+                    {{ unfrais.montant|number_format(2, ',', ' ') }} € par {{ unfrais.unite|default('unité')|replace({'(s)': ''}) }}
+                    {%- if unfrais.idfrais == 'KM' %} ({{ vehicule.puissance }} {{ vehicule.carburant|lower }}){% endif %}
+                  {%- endif -%}
+                </span></dt>
+                <dd>{{ unfrais.description }}</dd>
+              </div>
+            {% endfor %}
+          </dl>
+          <p class="aide__groupe">Au prix payé, avec la facture</p>
+          <p class="aide__item">Toutes les autres dépenses : train, taxi, repas du soir, parking…
+            Les péages ne sont pas remboursés : votre badge télépéage les couvre.</p>
+        </div>
+
+        {# Les forfaits d'abord : ce sont les dépenses les plus courantes. #}
+        <div class="categories__section">
+          <p class="categories__intitule">Au forfait <span>tarif fixé par GSB, sans facture</span></p>
+          <div class="categories__bloc">
+            <div class="categories__grille">
+              {% for unfrais in lesfraisforfait %}
+                {% set bloque = unfrais.idfrais == 'KM' and not vehicule %}
+                <label class="categorie{{ bloque ? ' categorie--bloquee' }}"
+                       data-recherche="{{ ('forfait ' ~ unfrais.idfrais ~ ' ' ~ unfrais.libelle ~ ' ' ~ unfrais.groupe ~ ' ' ~ unfrais.description)|lower }}">
+                  <input type="radio" name="categorie" value="forfait-{{ unfrais.idfrais }}" required
+                         data-type="forfait" data-tarif="{{ unfrais.montant }}" data-unite="{{ unfrais.unite }}"
+                         data-description="{{ unfrais.description }}"
+                         {%- if bloque %} disabled aria-describedby="sansVehicule"{% endif %}
+                         {%- if not bloque and choisie == 'forfait-' ~ unfrais.idfrais %} checked{% endif %} />
+                  <svg class="icone" aria-hidden="true"><use href="#ic-{{ unfrais.idfrais }}"/></svg>
+                  <span class="categorie__texte">
+                    <span>{{ unfrais.libelle }}</span>
+                    <span class="categorie__prix">
+                      {{- bloque ? 'véhicule à déclarer' : unfrais.montant|number_format(2, ',', ' ') ~ ' € / ' ~ unfrais.unite|default('unité')|replace({'(s)': ''}) -}}
+                    </span>
+                  </span>
+                </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        {# Puis les dépenses au prix payé, rangées par thème. #}
+        <div class="categories__section">
+          <p class="categories__intitule">Au prix payé <span>avec la facture</span></p>
+          {% for categorie in lescategories %}
+            {% if loop.first or lescategories[loop.index0 - 1].groupe != categorie.groupe %}
+              {% if not loop.first %}</div></div>{% endif %}
+              <div class="categories__bloc">
+                <p class="categories__groupe">{{ categorie.groupe }}</p>
+                <div class="categories__grille">
+            {% endif %}
+            <label class="categorie" data-recherche="{{ (categorie.libelle ~ ' ' ~ categorie.groupe ~ ' ' ~ categorie.motscles)|lower }}">
+              <input type="radio" name="categorie" value="horsforfait-{{ categorie.id }}" required
+                     data-type="depense" data-exemple="{{ categorie.exemple }}"
+                     {%- if choisie == 'horsforfait-' ~ categorie.id %} checked{% endif %} />
+              <svg class="icone" aria-hidden="true"><use href="#ic-{{ categorie.id }}"/></svg>
+              <span>{{ categorie.libelle }}</span>
+            </label>
+            {% if loop.last %}</div></div>{% endif %}
+          {% endfor %}
+        </div>
+        <p class="categories__vide" id="categoriesVide" hidden>Aucune catégorie ne correspond :
+          choisissez « Autre », en bas de la liste, et précisez la dépense.</p>
+      </div>
+      {# Rempli par saisie.js : ce que couvre le forfait choisi. #}
+      <p class="aide-texte categories__aide" id="categorieAide" aria-live="polite" hidden></p>
+    </li>
+
+    <li class="etape etape--large">
+      {# Affiché par saisie.js tant qu'aucune catégorie n'est choisie. #}
+      <p class="saisie-attente" id="saisieAttente" hidden>
+        <span class="etape__num" aria-hidden="true">3</span> Choisissez une catégorie : la suite s'adapte.
+      </p>
+
+      <fieldset class="saisie-prix" id="groupeForfait">
+        <legend><span class="etape__num" aria-hidden="true">3</span> Au forfait</legend>
+        <span class="etape__champ">
+          <label for="quantite">Quantité</label>
+          <span class="champ-unite">
+            <input type="text" id="quantite" name="quantite" size="6" maxlength="5" autocomplete="off"
+                   inputmode="numeric" value="{{ saisie.quantite|default('') }}" />
+            <span id="unite" class="unite"></span>
+            <output id="montantCalcule" for="quantite" class="montant-calcule"></output>
+          </span>
+        </span>
+        <small class="aide-texte">Tarif fixé par GSB d'après les prix pratiqués, dans la fourchette haute :
+          aucune facture à joindre.</small>
+      </fieldset>
+
+      <fieldset class="saisie-prix" id="groupeDepense">
+        <legend><span class="etape__num" aria-hidden="true">3</span> Au prix payé</legend>
+        <div class="etape__ligne">
+          <span class="etape__champ">
+            <label for="montant">Montant payé (€)</label>
+            <input type="text" id="montant" name="montant" size="10" maxlength="10" autocomplete="off"
+                   inputmode="decimal" value="{{ saisie.montant|default('') }}" />
+          </span>
+          <span class="etape__champ etape__champ--large">
+            <label for="libelle">Détail <span class="facultatif" id="libelleFacultatif">facultatif</span></label>
+            <input type="text" id="libelle" name="libelle" maxlength="100" autocomplete="off"
+                   value="{{ saisie.libelle|default('') }}" placeholder="Obligatoire pour « Autre »" />
+          </span>
+        </div>
+        <span class="etape__champ">
+          <label for="justificatifs">Facture</label>
+          <input type="file" id="justificatifs" name="justificatifs[]" multiple
+                 accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" aria-describedby="justificatifsAide" />
+          <small class="aide-texte" id="justificatifsAide">PDF, JPEG ou PNG, 5 Mo au plus par fichier.
+            Ajoutable plus tard depuis la liste.</small>
+        </span>
+      </fieldset>
+    </li>
+  </ol>
+  <p class="piedForm">
+    <input id="ajouter" type="submit" value="Ajouter" />
+    <input id="effacer" type="reset" value="Effacer" />
+  </p>
+</form>

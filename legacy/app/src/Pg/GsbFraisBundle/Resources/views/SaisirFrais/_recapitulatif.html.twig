@@ -1,0 +1,55 @@
+{# Ce qui est déjà saisi pour le mois : forfaits, dépenses, total estimé. #}
+<h2>Déjà saisi en {{ libmois|lower }}</h2>
+
+<section class="recap-bloc" aria-labelledby="titreRecapForfaits">
+  <h3 id="titreRecapForfaits">Frais forfaitisés</h3>
+  <div class="tableau-defilant">
+    <table class="listeLegere">
+      <tr>
+        <th>Type de frais</th>
+        <th class="montant">Quantité</th>
+        <th class="montant">Tarif</th>
+        <th class="montant">Total</th>
+      </tr>
+      {% for unfrais in lesfraisforfait if unfrais.quantite > 0 %}
+        <tr>
+          <td>{{ unfrais.libelle }}</td>
+          <td class="montant">{{ unfrais.quantite }} {{ unfrais.unite|replace({'(s)': unfrais.quantite > 1 ? 's' : ''}) }}</td>
+          <td class="montant">{{ unfrais.montant|number_format(2, ',', ' ') }} €</td>
+          <td class="montant">{{ unfrais.total|number_format(2, ',', ' ') }} €</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="vide">Aucun frais forfaitisé ce mois-ci.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  {# Le formulaire de 2013, pour corriger une erreur de saisie. #}
+  <details class="correction">
+    <summary>Corriger les quantités du mois</summary>
+    <form action="{{ path('pg_gsb_frais_saisirfrais') }}" method="POST" class="correction__form">
+      {% for unfrais in lesfraisforfait %}
+        <p>
+          <label for="frais-{{ unfrais.idfrais }}">{{ unfrais.libelle }}</label>
+          <span class="champ-unite">
+            <input type="text" id="frais-{{ unfrais.idfrais }}" name="lesFrais[{{ unfrais.idfrais }}]"
+                   size="6" maxlength="5" inputmode="numeric" value="{{ unfrais.quantite }}"
+                   {%- if unfrais.idfrais == 'KM' and not vehicule %} readonly aria-describedby="sansVehicule"{% endif %} />
+            <span class="unite">{{ unfrais.unite }}</span>
+          </span>
+        </p>
+      {% endfor %}
+      <p class="piedForm">
+        <input id="ok" type="submit" value="Enregistrer les quantités" />
+        <input id="annuler" type="reset" value="Annuler" />
+      </p>
+    </form>
+  </details>
+</section>
+
+<section class="recap-bloc" aria-labelledby="titreRecapDepenses">
+  <h3 id="titreRecapDepenses">Dépenses hors forfait</h3>
+  {% include 'PgGsbFraisBundle:ListeFrais:_depenses.html.twig' with {'lesfraishorsforfait': lesfraishorsforfait, 'modifiable': true} only %}
+</section>
+
+<p class="recap-total">Total estimé du mois : <strong>{{ montantestime|number_format(2, ',', ' ') }} €</strong></p>

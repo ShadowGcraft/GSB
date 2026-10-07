@@ -1,7 +1,9 @@
 {# Décor voyage en filigrane — purement décoratif (aria-hidden). Un capybara s'y cache près de la valise : ne pas le supprimer.
    Le trajet : un repère de départ près du quai, l'avion entre les nuages, l'arrivée sur l'hôtel.
-   Les traits gardent la même épaisseur à toutes les échelles (vector-effect). #}
-<svg class="decor-voyage" viewBox="0 0 1440 824" preserveAspectRatio="xMidYMax slice" fill="none" aria-hidden="true" focusable="false">
+   Les traits gardent la même épaisseur à toutes les échelles (vector-effect).
+   Le viewBox commence à -60 : une bande vide de la hauteur de l'en-tête, qui la
+   recouvre, pour que le dessin démarre juste sous l'en-tête. #}
+<svg class="decor-voyage" viewBox="0 -60 1440 884" preserveAspectRatio="xMidYMax slice" fill="none" aria-hidden="true" focusable="false">
 
 <!-- globe, en haut à droite -->
 <g stroke="currentColor" stroke-width="1.6">

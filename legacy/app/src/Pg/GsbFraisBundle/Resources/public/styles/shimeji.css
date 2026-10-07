@@ -1,0 +1,77 @@
+/* Shimeji, pour une blague : à retirer (voir layout.html.twig).
+   Un castor et un capybara se promènent en bas de l'écran et volent la souris. */
+
+.shimeji-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Position posée par shimeji.js (transform) ; ancrage : le milieu des pattes. */
+.shimeji {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 80px;
+  height: 56px;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+}
+.shimeji--tenu { cursor: grabbing; }
+.shimeji svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.shimeji__sens, .shimeji__pose { width: 100%; height: 100%; }
+.shimeji--gauche .shimeji__sens { transform: scaleX(-1); }
+.shimeji__pose { transform-origin: 50% 100%; }
+
+/* Pattes : deux paires qui alternent quand l'animal marche ou court. */
+.shimeji .patte-a, .shimeji .patte-b { transform-box: fill-box; transform-origin: 50% 0; }
+.shimeji--marche .patte-a { animation: shimeji-pas .34s ease-in-out infinite alternate; }
+.shimeji--marche .patte-b { animation: shimeji-pas .34s ease-in-out infinite alternate-reverse; }
+.shimeji--course .patte-a { animation: shimeji-pas .16s linear infinite alternate; }
+.shimeji--course .patte-b { animation: shimeji-pas .16s linear infinite alternate-reverse; }
+.shimeji--marche .shimeji__pose { animation: shimeji-dandine .34s ease-in-out infinite alternate; }
+.shimeji--course .shimeji__pose { animation: shimeji-dandine .16s linear infinite alternate; }
+.shimeji--saut .patte-a, .shimeji--saut .patte-b { transform: rotate(-35deg); }
+.shimeji--saut .shimeji__pose { transform: rotate(-12deg); }
+/* Attrapé par la peau du cou : il pend et se balance. */
+.shimeji--tenu .shimeji__pose { transform-origin: 70% 20%; animation: shimeji-balance .7s ease-in-out infinite alternate; }
+.shimeji--tenu .patte-a, .shimeji--tenu .patte-b { transform: rotate(20deg); }
+/* Au repos, il cligne des yeux. */
+.shimeji .oeil { transform-box: fill-box; transform-origin: 50% 50%; }
+.shimeji--repos .oeil { animation: shimeji-cligne 3.2s infinite; }
+
+@keyframes shimeji-pas { from { transform: rotate(-24deg); } to { transform: rotate(24deg); } }
+@keyframes shimeji-dandine { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+@keyframes shimeji-balance { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+@keyframes shimeji-cligne { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+
+/* --- le vol de la souris --- */
+
+/* Le vrai curseur disparaît : c'est le faux, dans la gueule, qui se voit. */
+html.shimeji-vol, html.shimeji-vol * { cursor: none !important; }
+/* Pendant le vol, aucun clic n'atteint la page. */
+.shimeji-bouclier { position: fixed; inset: 0; z-index: 2000; }
+.shimeji-curseur {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2001;
+  width: 18px;
+  height: 27px;
+  pointer-events: none;
+  transform-origin: 1.5px 1.5px;  /* la pointe de la flèche */
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .4));
+}
+.shimeji-curseur svg { display: block; width: 100%; height: 100%; }
+/* Lâché : le faux curseur rejoint la vraie position de la souris. */
+.shimeji-curseur--retour { transition: transform .25s ease-out; }
+
+@media (max-width: 900px) {
+  .shimeji { width: 64px; height: 45px; }
+}

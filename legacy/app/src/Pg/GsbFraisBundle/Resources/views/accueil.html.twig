@@ -13,7 +13,7 @@
       <a href="{{ path('pg_gsb_frais_home') }}"{% if route == 'pg_gsb_frais_home' %} aria-current="page"{% endif %}>Accueil</a>
     </li>
     <li class="smenu">
-      <a href="{{ path('pg_gsb_frais_saisirfrais') }}"{% if route starts with 'pg_gsb_frais_saisir' or route starts with 'pg_gsb_frais_valider' or route starts with 'pg_gsb_frais_supprimer' %} aria-current="page"{% endif %}>Saisie fiche de frais</a>
+      <a href="{{ path('pg_gsb_frais_saisirfrais') }}"{% if route == 'pg_gsb_frais_saisirfrais' %} aria-current="page"{% endif %}>Saisir mes frais</a>
     </li>
     <li class="smenu">
       <a href="{{ path('pg_gsb_frais_listefrais') }}"{% if route == 'pg_gsb_frais_listefrais' %} aria-current="page"{% endif %}>Mes fiches de frais</a>

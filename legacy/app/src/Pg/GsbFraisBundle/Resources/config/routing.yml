@@ -13,17 +13,14 @@ pg_gsb_frais_listefrais:
 pg_gsb_frais_saisirfrais:
     pattern:  /saisirfrais
     defaults: { _controller: PgGsbFraisBundle:SaisirFrais:index } 
-pg_gsb_frais_validerfraishorsforfais:
-    pattern:  /validerfraishorsforfait
-    defaults: { _controller: PgGsbFraisBundle:SaisirFrais:validerfraishorsforfait }
 pg_gsb_frais_supprimerfraishorsforfait:
     pattern:  /supprimerfraishorsforfait/{id}
     defaults: { _controller: PgGsbFraisBundle:SaisirFrais:supprimerfraishorsforfait }
 
 # --- Ajouts 2026 -------------------------------------------------------------
-pg_gsb_frais_ajouterfraisforfait:
-    pattern:  /ajouterfraisforfait
-    defaults: { _controller: PgGsbFraisBundle:SaisirFrais:ajouterfraisforfait }
+pg_gsb_frais_ajouterfrais:
+    pattern:  /ajouterfrais
+    defaults: { _controller: PgGsbFraisBundle:SaisirFrais:ajouterfrais }
     methods:  [POST]
 pg_gsb_frais_justificatif_voir:
     pattern:  /justificatif/{id}

@@ -78,7 +78,6 @@ class HomeController extends GsbController
             if (in_array($ligne['idEtat'], array('VA', 'MP'), true)) $enPaiement += $ligne['montantValide'];
         }
 
-        $joursRestants = (int) date('t') - (int) date('j');
         return $this->render('PgGsbFraisBundle:Accueil:tableau.html.twig', array(
             'libmois' => self::libelleMois($mois),
             'fiche' => $fiche,
@@ -86,7 +85,7 @@ class HomeController extends GsbController
             'nbhorsforfait' => count($horsForfait),
             'montantestime' => $fiche ? $pdo->getMontantCalcule($idVisiteur, $mois) : 0,
             'vehicule' => $vehicule,
-            'cloture' => $joursRestants === 0 ? 'ce soir' : ($joursRestants === 1 ? 'demain' : "dans $joursRestants jours"),
+            'cloture' => self::delaiCloture(),
             'afaire' => $aFaire,
             'synthese' => $synthese,
             'rembourse' => $rembourse,

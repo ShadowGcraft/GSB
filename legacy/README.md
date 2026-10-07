@@ -165,7 +165,12 @@ accès, sans la recréer. Ils ajoutent :
   catégories en six thèmes (transport, repas, animations et congrès, bureau, formation, divers),
   choisies dans une grille d'icônes avec recherche. Le visiteur saisit le prix payé et joint sa
   facture. Les dépenses s'affichent en liste, avec leur catégorie et l'état de leur facture. Les
-  péages ne figurent pas dans les catégories : le badge télépéage les couvre.
+  péages ne figurent pas dans les catégories : le badge télépéage les couvre ;
+- un **formulaire de saisie unique**, « Nouvelle dépense » : une seule grille de 31 catégories, les
+  quatre forfaits en tête avec leur tarif, puis les 27 catégories au prix payé. La suite s'adapte au
+  choix : quantité et montant calculé pour un forfait, montant payé, détail et facture sinon. Tout
+  jour du mois en cours est accepté, avant ou après aujourd'hui ; une dépense au prix payé peut aussi
+  dater de moins d'un an. La base ne change pas : forfaits et hors forfait restent rangés à part.
 
 Restent en l'état : les mots de passe en clair, et la saisie des forfaits limitée au mois courant.
 

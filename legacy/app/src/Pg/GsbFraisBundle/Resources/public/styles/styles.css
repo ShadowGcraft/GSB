@@ -57,13 +57,19 @@ body.gsb-page {
 
 /* --- décor en filigrane : décoratif, ne capte aucun clic ------------------ */
 
+/* Fixé à la fenêtre, comme un fond d'écran : sa taille ne dépend que de l'écran,
+   pas de la longueur de la page. Calé sur toute la page, il changeait d'échelle
+   à chaque page, et dès qu'un bloc s'ouvrait ou se fermait.
+   100vw et 100vh plutôt que 100 % : la fenêtre entière, barre de défilement
+   comprise (elle recouvre le bord du décor sans le décaler, page courte ou
+   longue), et sur mobile la barre d'adresse qui se replie ne le redimensionne pas.
+   Le haut est recouvert par l'en-tête (voir le viewBox). */
 .decor-voyage {
-  position: absolute;
+  position: fixed;
   left: 0;
-  top: 60px;
-  width: 100%;
-  height: calc(100% - 60px);
-  min-height: 824px;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: 0;
   pointer-events: none;
   color: var(--gsb-deco);
@@ -417,13 +423,13 @@ input[type=submit]:disabled { opacity: .45; cursor: not-allowed; }
 .fil { margin: 0 0 8px; font-size: 14px; }
 .fil a { color: inherit; }
 
-/* --- saisie guidée des forfaits : jour, type, quantité ----------------------- */
+/* --- page de saisie : étapes du formulaire « Nouvelle dépense » --------------- */
 
-.etapes { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-.etape { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; transition: opacity .15s; }
+.etapes { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+/* min-width: 0 : une case de grille ne rétrécit pas sous la largeur de son
+   contenu (champ fichier, champ Détail), ce qui débordait de l'écran sur mobile. */
+.etape { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
 .etape label { flex: none; font-weight: 700; }
-.etape--attente { opacity: .55; }
-.etape__titre { display: flex; align-items: center; gap: 10px; }
 .etape__num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 24px; height: 24px; margin-right: 4px; border-radius: 50%;
@@ -454,11 +460,34 @@ input[type=submit]:disabled { opacity: .45; cursor: not-allowed; }
 .aide__item { padding: 6px 8px; border-radius: 6px; }
 .aide__item dt { font-weight: 700; }
 .aide__item dd { margin: 2px 0 0; opacity: .9; }
-.aide__item--choisi { background: rgba(242, 201, 76, .18); }
+/* Texte libre de l'aide : sans les marges d'un paragraphe ordinaire. */
+.aide__panneau p.aide__item { margin: 0; }
 .aide__tarif { font-weight: 400; opacity: .8; margin-left: 6px; }
 .champ-unite { display: inline-flex; align-items: center; gap: 10px; }
 .unite { opacity: .85; }
-.recap { max-width: 460px; }
+
+/* --- page de saisie : en-tête, étapes, récapitulatif ------------------------- */
+
+.sous-titre { margin: 4px 0 0; font-size: 15px; opacity: .9; }
+.sous-titre strong { color: var(--gsb-card-ink); }
+
+#contenu h3.titre-formulaire { margin: 20px 0 14px; }
+
+.etape--large { align-items: stretch; }
+.etape .categories__entete { margin-top: 0; }
+.etape__ligne { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+.etape__champ { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.etape__champ label { flex: none; font-weight: 700; }
+.etape__champ--large { flex: 1 1 260px; align-items: stretch; }
+.etape small { max-width: 60ch; }
+
+.recap-bloc + .recap-bloc { margin-top: 26px; }
+#contenu .recap-bloc h3 { margin-top: 0; }
+.recap-total {
+  margin: 22px 0 0; padding: 14px 18px; border-radius: 12px; background: rgba(0, 0, 0, .18);
+  font-size: 18px; text-align: right;
+}
+.recap-total strong { color: var(--gsb-card-ink); font-family: var(--gsb-font-display); font-size: 22px; }
 
 details.correction { margin-top: 8px; }
 details.correction summary { cursor: pointer; font-weight: 700; color: var(--gsb-card-ink); }
@@ -589,7 +618,33 @@ input[type=file]::file-selector-button {
 .categorie:has(input:checked) { border-color: var(--gsb-accent); background: rgba(242, 201, 76, .18); font-weight: 700; }
 .categorie:has(input:focus-visible) { outline: 3px solid #FFFFFF; outline-offset: 2px; }
 .categories__vide { margin: 10px 0 0; font-size: 14px; }
-.depense-champs { margin-top: 16px; padding-top: 6px; border-top: 1px solid var(--gsb-panel-line); }
+
+/* Deux sections dans la grille : au forfait, puis au prix payé. */
+.categories__section + .categories__section {
+  margin-top: 18px; padding-top: 4px; border-top: 1px solid var(--gsb-panel-line);
+}
+.categories__intitule { margin: 12px 0 8px; font-family: var(--gsb-font-display); font-size: 16px; font-weight: 700; }
+.categories__intitule span { margin-left: 6px; font-family: var(--gsb-font-body); font-size: 13px; font-weight: 400; opacity: .8; }
+.categories__intitule + .categories__bloc .categories__groupe { margin-top: 6px; }
+.categories__aide { margin: 2px 0 0; }
+.aide__panneau { margin: 0 0 6px; }
+.categorie__texte { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.categorie__prix { font-size: 12.5px; font-weight: 400; opacity: .8; }
+/* Kilomètres sans véhicule déclaré : visibles, mais pas sélectionnables (RG20). */
+.categorie--bloquee, .categorie--bloquee input { cursor: not-allowed; }
+.categorie--bloquee { opacity: .5; }
+.categorie--bloquee:hover { border-color: var(--gsb-panel-line); }
+
+/* Étape 3 : quantité d'un forfait, ou montant et facture d'une dépense. */
+.saisie-attente {
+  display: flex; align-items: center; gap: 4px; margin: 0; padding: 12px 14px;
+  border-radius: 10px; border: 1px dashed var(--gsb-panel-line); opacity: .85;
+}
+.saisie-prix legend { display: flex; align-items: center; gap: 4px; padding: 0 6px; color: inherit; }
+.saisie-prix + .saisie-prix { margin-top: 14px; }
+.saisie-prix > :not(legend) + :not(legend) { margin-top: 12px; }
+.saisie-prix > small { display: block; }
+.montant-calcule { font-family: var(--gsb-font-display); font-size: 17px; font-weight: 700; color: var(--gsb-card-ink); }
 
 .depenses { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .depense {
@@ -743,4 +798,9 @@ body.gsb-admin .smenu a[aria-current="page"] { background: rgba(240, 201, 140, .
   .fiche__mois { font-size: 22px; }
   .gsb-heading h2 { font-size: 24px; }
   .decor-voyage { opacity: 0.2; }
+}
+
+/* À l'impression, un élément fixe se répète sur chaque feuille : pas de décor. */
+@media print {
+  .decor-voyage { display: none; }
 }

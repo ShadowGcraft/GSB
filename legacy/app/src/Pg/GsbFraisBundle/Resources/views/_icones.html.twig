@@ -1,7 +1,21 @@
-{# Icônes des catégories de dépenses, une par identifiant de categoriehorsforfait.
+{# Icônes des catégories de dépenses : une par frais forfaitisé (fraisforfait.id)
+   et une par catégorie hors forfait (categoriehorsforfait.id).
    Usage : <svg class="icone" aria-hidden="true"><use href="#ic-TRA"/></svg>
    Trait arrondi sur une grille de 24, couleur héritée du texte. #}
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
+  {# Forfaits #}
+  <symbol id="ic-REP" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="13" r="5.5"/><circle cx="12" cy="13" r="2.5"/><path d="M2.5 4v4a1.5 1.5 0 0 0 3 0V4M4 9.5V21"/><path d="M21.5 21V4c-1.6.8-2.5 2.6-2.5 5.5V13h2.5"/>
+  </symbol>
+  <symbol id="ic-NUI" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 6v13M3 15h18v4"/><path d="M21 15v-2a3 3 0 0 0-3-3h-7.5v5"/><circle cx="6.75" cy="11.75" r="1.75"/>
+  </symbol>
+  <symbol id="ic-ETP" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.5 21V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v16"/><path d="M2.5 21h19"/><path d="M9 7.5v6M15 7.5v6M9 10.5h6"/><path d="M10.5 21v-3.5h3V21"/>
+  </symbol>
+  <symbol id="ic-KM" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8.5 3L4 21M15.5 3L20 21"/><path d="M12 4v2.5M12 10.5v3M12 17.5v3"/>
+  </symbol>
   {# Transport #}
   <symbol id="ic-TRA" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <rect x="5" y="3" width="14" height="14" rx="4"/><path d="M5 10h14M12 3v7"/><path d="M8.5 13.5h.01M15.5 13.5h.01"/><path d="M8 21l2-4M16 21l-2-4"/>

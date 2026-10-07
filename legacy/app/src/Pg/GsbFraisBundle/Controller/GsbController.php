@@ -66,6 +66,13 @@ abstract class GsbController extends Controller
         return ucfirst(self::$nomsMois[(int) substr($mois, 4, 2) - 1]).' '.substr($mois, 0, 4);
     }
 
+    /** Délai avant la clôture de la fiche du mois : « ce soir », « demain », « dans 5 jours ». */
+    protected static function delaiCloture()
+    {
+        $jours = (int) date('t') - (int) date('j');
+        return $jours === 0 ? 'ce soir' : ($jours === 1 ? 'demain' : "dans $jours jours");
+    }
+
     /** « 09/2026 » pour 202609 : dans une phrase, évite « de août ». */
     protected static function moisCourt($mois)
     {

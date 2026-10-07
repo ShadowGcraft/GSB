@@ -49,7 +49,7 @@ class JustificatifController extends GsbController
     {
         if ($refus = $this->exigeRole(self::ROLE_VISITEUR)) return $refus;
         if ($this->envoiTropLourd($request)) {
-            $this->ajouteMessage('erreurHorsForfait', 'Les pièces jointes sont trop lourdes : 5 Mo au plus par fichier.');
+            $this->ajouteMessage('erreur', 'Les pièces jointes sont trop lourdes : 5 Mo au plus par fichier.');
             return $this->redirectToRoute('pg_gsb_frais_saisirfrais');
         }
         $frais = $this->pdo()->getUnFraisHorsForfait($id);
@@ -61,9 +61,9 @@ class JustificatifController extends GsbController
         if (!$fichiers || $fichiers === array(null)) {
             $erreurs[] = 'Choisissez au moins un fichier à joindre.';
         } elseif (!$erreurs) {
-            $this->ajouteMessage('succesHorsForfait', 'Pièce jointe ajoutée à « '.$frais['libelle'].' ».');
+            $this->ajouteMessage('succes', 'Pièce jointe ajoutée à « '.$frais['libelle'].' ».');
         }
-        foreach ($erreurs as $erreur) $this->ajouteMessage('erreurHorsForfait', $erreur);
+        foreach ($erreurs as $erreur) $this->ajouteMessage('erreur', $erreur);
         $this->pdo()->recalculeNbJustificatifs($frais['idVisiteur'], $frais['mois']);
         return $this->redirectToRoute('pg_gsb_frais_saisirfrais');
     }
@@ -79,7 +79,7 @@ class JustificatifController extends GsbController
         $this->effaceFichiers(array($justificatif));
         $this->pdo()->supprimeJustificatif($id);
         $this->pdo()->recalculeNbJustificatifs($frais['idVisiteur'], $frais['mois']);
-        $this->ajouteMessage('succesHorsForfait', 'Pièce jointe « '.$justificatif['nomOriginal'].' » supprimée.');
+        $this->ajouteMessage('succes', 'Pièce jointe « '.$justificatif['nomOriginal'].' » supprimée.');
         return $this->redirectToRoute('pg_gsb_frais_saisirfrais');
     }
 }

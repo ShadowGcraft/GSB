@@ -1,8 +1,26 @@
 {% extends "PgGsbFraisBundle::accueil.html.twig" %}
 {% block body %}
 {% block bloc1 %}
-{% include 'PgGsbFraisBundle:SaisirFrais:saisirfraisforfait.html.twig' %}
-{% include 'PgGsbFraisBundle:SaisirFrais:saisirfraishorsforfait.html.twig' %}
+{# La saisie en deux blocs : ajouter une dépense, puis ce qui est déjà saisi ce mois-ci. #}
+<div id="contenu">
+  <div class="entete-page">
+    <div>
+      <h2>Saisir mes frais · {{ libmois }}</h2>
+      <p class="sous-titre">Fiche en cours, clôture {{ cloture }} · total estimé
+        <strong>{{ montantestime|number_format(2, ',', ' ') }} €</strong></p>
+    </div>
+  </div>
+  {% include 'PgGsbFraisBundle:SaisirFrais:_messages.html.twig' %}
+
+  <section aria-labelledby="titreNouveauFrais">
+    <h3 id="titreNouveauFrais" class="titre-formulaire">Nouvelle dépense</h3>
+    {% include 'PgGsbFraisBundle:SaisirFrais:_nouveaufrais.html.twig' %}
+  </section>
+</div>
+
+<div id="contenu">
+  {% include 'PgGsbFraisBundle:SaisirFrais:_recapitulatif.html.twig' %}
+</div>
 <script src="{{ asset('bundles/gsbfrais/js/saisie.js') }}" defer></script>
 {% endblock %}
 {% endblock %}
