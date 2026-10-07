@@ -540,7 +540,7 @@
     document.body.className = 'erreur-067-page';
     document.body.innerHTML = '<main class="erreur-067" role="alert">'
       + '<p class="erreur-067__code">Erreur 067</p>'
-      + '<h1 class="erreur-067__titre">La réalité a été annihilée par La géante.</h1>'
+      + '<h1 class="erreur-067__titre">La réalité a été annihilée par Amandine.</h1>'
       + `<p class="erreur-067__texte">Amandine est retombée sur une sosie d'elle-même: la collision a ouvert un trou noir, qui a englouti la page.</p>`
       + '<pre class="erreur-067__trace">RealityCollapseException: singularité détectée\n'
       + '    at Amandine.retombe (shimeji.js)\n'
