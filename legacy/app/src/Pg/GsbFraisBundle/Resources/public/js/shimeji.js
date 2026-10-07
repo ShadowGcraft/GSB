@@ -1,6 +1,9 @@
 /* Shimeji, pour une blague : à retirer (voir layout.html.twig).
-   Un castor et un capybara se promènent en bas de l'écran. De temps en temps,
-   l'un d'eux saute sur la souris et file vers le bord avec, comme Desktop Goose.
+   Un castor et un capybara se promènent en bas de l'écran, un pigeon (moche, avec
+   une bouche humaine) vole au-dessus. Tous sortent par la porte de l'hôtel du
+   décor. De temps en temps, ils foncent sur la souris, plusieurs à la fois s'il le
+   faut : le premier qui l'attrape file avec, comme Desktop Goose, en courant vers
+   le bord, ou en s'envolant pour le pigeon.
    Une page ne peut pas déplacer le vrai curseur : il est masqué, un faux part
    dans la gueule de l'animal, et aucun clic n'atteint la page pendant le vol.
    Secouer la souris lui fait lâcher prise ; on peut aussi attraper les animaux
@@ -52,6 +55,35 @@
         + '<path d="M69 32v7.5" stroke="#B89A5E" stroke-width="1"/>'
         + '<g class="patte-a" fill="#5E3B20"><rect x="19" y="42" width="6" height="12" rx="2.5"/><rect x="51" y="42" width="6" height="12" rx="2.5"/></g>'
         + '</svg>'
+    },
+    // Lui vole (ailes) : « envol » pour flâner, « pique » pour fondre sur la souris.
+    pigeon: {
+      ailes: true, marche: 45, envol: 280, pique: 560, gueule: [34, -37], premierVol: [7000, 12000],
+      svg: '<svg viewBox="0 0 80 56" aria-hidden="true">'
+        + '<path d="M3 27l16-3 2 11-15 5z" fill="#6B717B" stroke="#4A4F57" stroke-width="1.5" stroke-linejoin="round"/>'
+        + '<path d="M4.5 36l15-3" stroke="#2E3138" stroke-width="2"/>'
+        + '<g class="patte-b" fill="none" stroke="#C9566A" stroke-width="2.4" stroke-linecap="round"><path d="M32 44v9m-3 1h6"/></g>'
+        + '<ellipse cx="34" cy="34" rx="21" ry="12.5" fill="#9AA0AA" stroke="#4A4F57" stroke-width="1.8"/>'
+        + '<ellipse cx="40" cy="39" rx="12" ry="6.5" fill="#B9BFC8"/>'
+        // Le cou irisé, vert et violet.
+        + '<path d="M46 32c2-9 6-14 11-15l6 5c-2 7-6 12-12 15z" fill="#5F9A78"/>'
+        + '<path d="M48 31c3-6 6-9 10-10l3 3c-2 5-5 8-10 10z" fill="#8B67A6" opacity=".75"/>'
+        + '<circle cx="62" cy="15" r="8.5" fill="#9AA0AA" stroke="#4A4F57" stroke-width="1.8"/>'
+        // Plumes en bataille, œil orange un peu de travers.
+        + '<path d="M58 7l-1-4M61 6.5l1-4M64 7l3-3" stroke="#4A4F57" stroke-width="1.4" stroke-linecap="round"/>'
+        + '<circle cx="63" cy="12" r="3" fill="#F08A24" stroke="#4A4F57" stroke-width=".8"/>'
+        + '<circle class="oeil" cx="63.8" cy="12.6" r="1.3" fill="#1A1A1A"/>'
+        // À la place du bec : une bouche humaine, lèvres et dents.
+        + '<path d="M66.5 17.5c2-4 5-4.2 7-2 2-2.2 5-2 7 2-4.5 1.2-9.5 1.2-14 0z" fill="#D94F6B" stroke="#9E2F45" stroke-width="1"/>'
+        + '<path d="M68 18h11v2.6H68z" fill="#FFF8EC"/>'
+        + '<path d="M70.8 18v2.6M73.5 18v2.6M76.2 18v2.6" stroke="#CFC4B2" stroke-width=".6"/>'
+        + '<path d="M66.5 18c3.5 7.5 10.5 7.5 14 0-4.5 3.2-9.5 3.2-14 0z" fill="#E35C77" stroke="#9E2F45" stroke-width="1"/>'
+        + '<ellipse cx="74" cy="22" rx="2.6" ry=".9" fill="#FFFFFF" opacity=".45"/>'
+        // L'aile, devant le corps, avec ses deux barres noires.
+        + '<g class="aile"><path d="M20 27c9-9 22-9 30-1-5 9-17 11-28 8z" fill="#7F8590" stroke="#4A4F57" stroke-width="1.5" stroke-linejoin="round"/>'
+        + '<path d="M27 30h12M25 33.5h13" stroke="#2E3138" stroke-width="2" stroke-linecap="round"/></g>'
+        + '<g class="patte-a" fill="none" stroke="#D9707A" stroke-width="2.4" stroke-linecap="round"><path d="M40 44v9m-3 1h6"/></g>'
+        + '</svg>'
     }
   };
 
@@ -61,8 +93,7 @@
   // --- la souris ---
 
   var souris = { x: 0, y: 0, dedans: false, traces: [] };
-  var voleur = null;      // l'animal qui tient la souris
-  var chasseur = null;    // l'animal qui lui court après (un seul à la fois)
+  var voleur = null;      // l'animal qui tient la souris : un seul, il n'y a qu'un curseur
   var secousse = 0;
 
   document.addEventListener('pointermove', function (e) {
@@ -115,7 +146,6 @@
 
   function vole(b) {
     voleur = b;
-    chasseur = null;
     secousse = 0;
     html.classList.add('shimeji-vol');
     bouclier.hidden = false;
@@ -124,8 +154,8 @@
     b.etat = 'vol';
     b.debutVol = maintenant();
     b.auBord = 0;
-    // Il file vers le bord le plus proche.
-    b.sens = b.x < window.innerWidth / 2 ? -1 : 1;
+    // Il file vers le bord le plus proche, et s'y tient.
+    b.cote = b.sens = b.x < window.innerWidth / 2 ? -1 : 1;
   }
 
   function lache() {
@@ -144,7 +174,18 @@
     }, 260);
     b.etat = 'chute';
     b.vx = 0;
+    b.minuteur = 0.35;    // le pigeon se remet à voler après ce temps de chute
     b.prochainVol = maintenant() + entre(12000, 22000);
+  }
+
+  // La porte de l'hôtel du décor (_decor_voyage.html.twig), en coordonnées de
+  // l'écran ; null si elle manque ou dépasse de la fenêtre (écran étroit).
+  function porte() {
+    var p = document.querySelector('.decor-voyage .decor-porte');
+    if (!p) return null;
+    var r = p.getBoundingClientRect();
+    if (!r.width || r.left < 0 || r.right > window.innerWidth || r.bottom > window.innerHeight) return null;
+    return { x: r.left + r.width / 2, y: r.bottom };
   }
 
   // --- les animaux ---
@@ -158,7 +199,7 @@
     this.el.className = this.classe = 'shimeji shimeji--' + espece;
     this.el.setAttribute('aria-hidden', 'true');
     this.el.innerHTML = '<div class="shimeji__sens"><div class="shimeji__pose">' + this.e.svg + '</div></div>';
-    // Ils arrivent du bord de l'écran.
+    // Sans porte d'hôtel à l'écran, ils arrivent par un bord (voir plus bas).
     this.x = depuisLaGauche ? -60 : window.innerWidth + 60;
     this.y = window.innerHeight;
     this.vx = 0;
@@ -173,7 +214,6 @@
       if (b === voleur) return;
       e.preventDefault();
       b.el.setPointerCapture(e.pointerId);
-      if (chasseur === b) chasseur = null;
       b.etat = 'tenu';
     });
     function relache() {
@@ -182,12 +222,35 @@
       b.vx = v[0];
       b.vy = v[1];
       b.etat = 'chute';
+      b.minuteur = 0.35;
     }
     this.el.addEventListener('pointerup', relache);
     this.el.addEventListener('pointercancel', relache);
 
     scene.appendChild(this.el);
     this.mesure();
+
+    var sortie = porte();
+    if (sortie) {
+      // Par la porte de l'hôtel : il en sort en grandissant, d'un petit bond.
+      this.x = sortie.x;
+      this.y = sortie.y;
+      this.sens = Math.random() < 0.5 ? -1 : 1;
+      this.finSortie = maintenant() + 600;
+      if (this.e.ailes) {
+        this.decolle();
+      } else {
+        this.etat = 'chute';
+        this.vx = this.sens * 110;
+        this.vy = -320;
+      }
+    } else if (this.e.ailes) {
+      // Le pigeon arrive par un bord en volant, à mi-hauteur.
+      this.y = entre(120, window.innerHeight * 0.45);
+      this.decolle();
+    }
+    // Placé tout de suite, sans attendre la prochaine image de la boucle.
+    this.dessine(maintenant());
   }
 
   Bestiole.prototype.mesure = function () {
@@ -201,15 +264,18 @@
   };
 
   Bestiole.prototype.peutVoler = function (t) {
-    return SOURIS && souris.dedans && !voleur && !chasseur && t > this.prochainVol;
+    return SOURIS && souris.dedans && !voleur && t > this.prochainVol;
   };
 
   Bestiole.prototype.abandonne = function (t, delai) {
-    if (chasseur === this) chasseur = null;
+    this.prochainVol = t + delai;
+    if (this.e.ailes) {
+      this.decolle();
+      return;
+    }
     this.etat = 'repos';
     this.minuteur = entre(1, 2);
     this.vx = this.vy = 0;
-    this.prochainVol = t + delai;
   };
 
   // Saut calculé pour que la gueule passe par la souris.
@@ -225,7 +291,13 @@
   };
 
   Bestiole.prototype.avance = function (dt, t) {
+    if (this.e.ailes && this.avanceOiseau(dt, t)) return;
     var largeur = window.innerWidth, sol = window.innerHeight, demi = this.l / 2, e = this.e, g;
+    // Le pigeon à terre reprend son envol de temps en temps.
+    if (e.ailes && (this.etat === 'repos' || this.etat === 'marche') && Math.random() < dt * 0.12) {
+      this.decolle();
+      return;
+    }
     switch (this.etat) {
       case 'repos':
         this.y = sol;
@@ -323,20 +395,124 @@
   };
 
   Bestiole.prototype.chasse = function (t) {
-    chasseur = this;
     this.etat = 'chasse';
     this.finChasse = t + 6000;
   };
 
-  var POSES = { repos: 'repos', marche: 'marche', chasse: 'course', saut: 'saut', chute: 'saut', vol: 'course', tenu: 'tenu' };
+  // --- le pigeon, qui vole ---
 
-  Bestiole.prototype.dessine = function () {
-    var pose = this.etat === 'vol' && this.y < window.innerHeight ? 'saut' : POSES[this.etat];
-    var classe = 'shimeji shimeji--' + this.espece + ' shimeji--' + pose + (this.sens < 0 ? ' shimeji--gauche' : '');
+  // Un point au hasard dans le ciel de la page.
+  Bestiole.prototype.choisitCible = function () {
+    var demi = this.l / 2;
+    this.cible = [entre(demi, window.innerWidth - demi), entre(this.h + 20, window.innerHeight * 0.7)];
+  };
+
+  // Quelques étapes en l'air, puis il se pose.
+  Bestiole.prototype.decolle = function () {
+    this.etat = 'envol';
+    this.etapes = Math.floor(entre(2, 5));
+    this.atterrit = false;
+    this.choisitCible();
+  };
+
+  // Vol en douceur vers un point : la vitesse tourne peu à peu vers la cible et
+  // baisse à l'approche, pour ne pas lui tourner autour. Renvoie la distance.
+  Bestiole.prototype.volVers = function (cx, cy, vitesse, dt) {
+    var dx = cx - this.x, dy = cy - this.y, d = Math.sqrt(dx * dx + dy * dy);
+    var voulue = Math.min(vitesse, d * 5), f = Math.min(1, dt * 5);
+    this.vx += ((d ? dx / d * voulue : 0) - this.vx) * f;
+    this.vy += ((d ? dy / d * voulue : 0) - this.vy) * f;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    if (Math.abs(this.vx) > 20) this.sens = this.vx < 0 ? -1 : 1;
+    return d;
+  };
+
+  // Les états en vol ; renvoie false pour ceux qu'il partage avec les autres
+  // (à terre, ou tenu à la main).
+  Bestiole.prototype.avanceOiseau = function (dt, t) {
+    var largeur = window.innerWidth, sol = window.innerHeight, demi = this.l / 2, e = this.e, k = this.l / 80, g, d;
+    switch (this.etat) {
+      case 'envol':
+        d = this.volVers(this.cible[0], this.cible[1], e.envol, dt);
+        if (this.peutVoler(t)) this.chasse(t);
+        else if (d < 20) {
+          if (this.atterrit) {
+            this.y = sol;
+            this.vx = this.vy = 0;
+            this.etat = 'marche';
+            this.minuteur = entre(2, 5);
+          } else if (--this.etapes > 0) {
+            this.choisitCible();
+          } else {
+            this.atterrit = true;
+            this.cible = [entre(demi, largeur - demi), sol];
+          }
+        }
+        break;
+
+      case 'chasse':
+        if (!souris.dedans || voleur || t > this.finChasse) {
+          this.abandonne(t, 8000);
+          break;
+        }
+        // Il vise pour que sa bouche arrive sur la souris.
+        var cote = souris.x < this.x ? -1 : 1;
+        this.volVers(souris.x - cote * e.gueule[0] * k, souris.y - e.gueule[1] * k, e.pique, dt);
+        g = this.gueule();
+        if (Math.abs(g[0] - souris.x) < 30 && Math.abs(g[1] - souris.y) < 30) vole(this);
+        break;
+
+      case 'vol':
+        // Il emporte la souris en haut de la page, du côté le plus proche.
+        d = this.volVers(this.cote < 0 ? demi : largeur - demi, this.h + 10, e.envol * 1.5, dt);
+        if (d < 25) this.auBord += dt;
+        g = this.gueule();
+        placeCurseur(g[0], g[1], this.sens * -35);
+        if (secousse > SECOUSSE || this.auBord > 0.9 || t - this.debutVol > 7000) lache();
+        break;
+
+      case 'chute':
+        // Lancé ou lâché : il tombe un instant, puis se remet à battre des ailes.
+        this.vy += GRAVITE * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.minuteur -= dt;
+        if (this.y >= sol) {
+          this.y = sol;
+          this.vx = this.vy = 0;
+          this.etat = 'repos';
+          this.minuteur = entre(0.8, 1.5);
+        } else if (this.minuteur <= 0) {
+          this.decolle();
+        }
+        break;
+
+      default:
+        return false;
+    }
+    // Dans la fenêtre, une fois entré (sans porte, il arrive de l'extérieur).
+    if (this.x >= demi && this.x <= largeur - demi) this.entre = true;
+    if (this.entre) this.x = Math.max(demi, Math.min(largeur - demi, this.x));
+    this.y = Math.max(this.h, Math.min(sol, this.y));
+    return true;
+  };
+
+  var POSES = { repos: 'repos', marche: 'marche', chasse: 'course', saut: 'saut', chute: 'saut', vol: 'course',
+                tenu: 'tenu', envol: 'envol' };
+
+  Bestiole.prototype.dessine = function (t) {
+    var enLAir = this.y < window.innerHeight - 1;
+    var pose = this.e.ailes && enLAir && this.etat !== 'tenu' ? 'envol'
+             : this.etat === 'vol' && enLAir ? 'saut' : POSES[this.etat];
+    var classe = 'shimeji shimeji--' + this.espece + ' shimeji--' + pose + (this.sens < 0 ? ' shimeji--gauche' : '')
+               + (this.finSortie && t < this.finSortie ? ' shimeji--sortie' : '');
     if (classe !== this.classe) {
       this.el.className = classe;
       this.classe = classe;
     }
+    // L'état, lisible dans l'inspecteur (et par les tests).
+    if (this.el.getAttribute('data-etat') !== this.etat) this.el.setAttribute('data-etat', this.etat);
     this.el.style.transform = 'translate3d(' + Math.round(this.x - this.l / 2) + 'px, ' + Math.round(this.y - this.h) + 'px, 0)';
   };
 
@@ -349,14 +525,14 @@
     avant = t;
     for (var i = 0; i < bestioles.length; i++) {
       bestioles[i].avance(dt, t);
-      bestioles[i].dessine();
+      bestioles[i].dessine(t);
     }
     window.requestAnimationFrame(boucle);
   }
 
-  // --- un de chaque au départ, puis un de plus à chaque H + J ---
+  // --- un de chaque au départ, puis un de plus (au hasard) à chaque H + J ---
 
-  var MAX_ANIMAUX = 30;   // au-delà, la page rame
+  var MAX_ANIMAUX = 300;   // au-delà, la page rame
 
   function ajoute(espece, depuisLaGauche) {
     if (bestioles.length < MAX_ANIMAUX) bestioles.push(new Bestiole(espece, depuisLaGauche));
@@ -378,7 +554,8 @@
     if (enfoncees.KeyH && enfoncees.KeyJ && !combinaison
         && !e.ctrlKey && !e.altKey && !e.metaKey && !enSaisie(document.activeElement)) {
       combinaison = true;
-      ajoute(Math.random() < 0.5 ? 'capybara' : 'castor', Math.random() < 0.5);
+      var especes = Object.keys(ESPECES);
+      ajoute(especes[Math.floor(Math.random() * especes.length)], Math.random() < 0.5);
     }
   });
   document.addEventListener('keyup', function (e) {
@@ -397,6 +574,7 @@
   document.body.appendChild(curseur);
   ajoute('capybara', true);
   ajoute('castor', false);
+  ajoute('pigeon', Math.random() < 0.5);
   window.addEventListener('resize', function () {
     for (var i = 0; i < bestioles.length; i++) bestioles[i].mesure();
   });

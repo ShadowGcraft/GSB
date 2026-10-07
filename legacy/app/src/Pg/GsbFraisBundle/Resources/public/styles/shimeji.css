@@ -46,7 +46,22 @@
 .shimeji .oeil { transform-box: fill-box; transform-origin: 50% 50%; }
 .shimeji--repos .oeil { animation: shimeji-cligne 3.2s infinite; }
 
+/* Le pigeon en vol : ailes qui battent, pattes repliées, léger roulis. Tenu à la
+   main, il bat des ailes encore plus vite. */
+.shimeji .aile { transform-box: fill-box; transform-origin: 85% 25%; }
+.shimeji--envol .aile { animation: shimeji-bat .11s linear infinite alternate; }
+.shimeji--pigeon.shimeji--tenu .aile { animation: shimeji-bat .07s linear infinite alternate; }
+.shimeji--envol .patte-a, .shimeji--envol .patte-b { transform: rotate(-70deg); }
+.shimeji--envol .shimeji__pose { animation: shimeji-plane .5s ease-in-out infinite alternate; }
+
+/* Sortie de l'hôtel du décor : il grandit en passant la porte. La propriété
+   scale s'ajoute au transform qui le retourne, sans l'écraser. */
+.shimeji--sortie .shimeji__sens { transform-origin: 50% 100%; animation: shimeji-sortie .6s ease-out both; }
+
 @keyframes shimeji-pas { from { transform: rotate(-24deg); } to { transform: rotate(24deg); } }
+@keyframes shimeji-bat { from { transform: rotate(-55deg); } to { transform: rotate(20deg); } }
+@keyframes shimeji-plane { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(-4px) rotate(2deg); } }
+@keyframes shimeji-sortie { from { scale: .3; opacity: .3; } to { scale: 1; opacity: 1; } }
 @keyframes shimeji-dandine { from { transform: translateY(0); } to { transform: translateY(-3px); } }
 @keyframes shimeji-balance { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
 @keyframes shimeji-cligne { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
