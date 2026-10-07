@@ -7,8 +7,8 @@
    Une page ne peut pas déplacer le vrai curseur : il est masqué, un faux part
    dans la gueule de l'animal, et aucun clic n'atteint la page pendant le vol.
    Secouer la souris lui fait lâcher prise ; on peut aussi attraper les animaux
-   et les lancer. H + J en même temps fait venir un animal de plus, et en
-   continu tant que les deux touches restent enfoncées.
+   et les lancer. Aucun animal au départ : H + J en même temps en fait venir
+   un, et en continu tant que les deux touches restent enfoncées.
    Mob rare (5 %) : une géante qui veut manger la souris. Quand elle retombe
    lourdement, son onde de choc tue les animaux autour, à la Minecraft : rouges,
    couchés à 90°, puis un petit nuage. Si elle écrase une autre géante, un trou
@@ -715,7 +715,7 @@
     window.requestAnimationFrame(boucle);
   }
 
-  // --- un de chaque au départ, puis d'autres (au hasard) avec H + J ---
+  // --- aucun au départ ; ils arrivent (au hasard) avec H + J ---
 
   var MAX_ANIMAUX = 30000;   // au-delà, la page rame
   var CADENCE = 1;       // ms entre deux animaux, H + J maintenus
@@ -724,7 +724,7 @@
     if (!apocalypse && bestioles.length < MAX_ANIMAUX) bestioles.push(new Bestiole(espece, depuisLaGauche));
   }
 
-  // Mob rare : 5 % des apparitions (au chargement comme avec H + J). Plusieurs
+  // Mob rare : 5 % des apparitions avec H + J. Plusieurs
   // peuvent coexister : si l'une écrase l'autre, c'est le trou noir.
   var CHANCE_GEANTE = 0.05;
 
@@ -778,10 +778,7 @@
   document.body.appendChild(scene);
   document.body.appendChild(bouclier);
   document.body.appendChild(curseur);
-  ajoute('capybara', true);
-  ajoute('castor', false);
-  ajoute('pigeon', Math.random() < 0.5);
-  if (Math.random() < CHANCE_GEANTE) ajoute('geante', Math.random() < 0.5);
+  // Aucun animal au départ : ils n'arrivent qu'avec H + J.
   window.addEventListener('resize', function () {
     for (var i = 0; i < bestioles.length; i++) bestioles[i].mesure();
   });
