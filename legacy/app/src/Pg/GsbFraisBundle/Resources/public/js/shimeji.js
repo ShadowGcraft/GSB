@@ -7,7 +7,12 @@
    Une page ne peut pas déplacer le vrai curseur : il est masqué, un faux part
    dans la gueule de l'animal, et aucun clic n'atteint la page pendant le vol.
    Secouer la souris lui fait lâcher prise ; on peut aussi attraper les animaux
-   et les lancer. H + J en même temps fait venir un animal de plus. */
+   et les lancer. H + J en même temps fait venir un animal de plus, et en
+   continu tant que les deux touches restent enfoncées.
+   Mob rare (5 %) : une géante qui veut manger la souris. Quand elle retombe
+   lourdement, son onde de choc tue les animaux autour, à la Minecraft : rouges,
+   couchés à 90°, puis un petit nuage. Si elle écrase une autre géante, un trou
+   noir avale toute la page, remplacée par l'écran « Erreur 067 ». */
 (function () {
   if (!window.requestAnimationFrame || !window.matchMedia) return;
 
@@ -17,8 +22,9 @@
   var SECOUSSE = 2500;    // mouvement de souris (px) qui fait lâcher prise
   var html = document.documentElement;
 
-  // Dessins tournés vers la droite, pattes en bas (viewBox 80 × 56).
-  // « gueule » : où tenir le curseur, depuis le milieu des pattes, pour 80 px de large.
+  // Dessins tournés vers la droite, pattes en bas (viewBox 80 × 56, sauf la géante).
+  // « gueule » : où tenir le curseur, depuis le milieu des pattes, pour une largeur
+  // de « base » px (80 par défaut) ; elle suit la taille affichée.
   var ESPECES = {
     capybara: {
       marche: 55, course: 330, gueule: [35, -26], premierVol: [5000, 9000],
@@ -83,6 +89,40 @@
         + '<g class="aile"><path d="M20 27c9-9 22-9 30-1-5 9-17 11-28 8z" fill="#7F8590" stroke="#4A4F57" stroke-width="1.5" stroke-linejoin="round"/>'
         + '<path d="M27 30h12M25 33.5h13" stroke="#2E3138" stroke-width="2" stroke-linecap="round"/></g>'
         + '<g class="patte-a" fill="none" stroke="#D9707A" stroke-width="2.4" stroke-linecap="round"><path d="M40 44v9m-3 1h6"/></g>'
+        + '</svg>'
+    },
+    // Mob rare (voir CHANCE_GEANTE). Lourde : elle écrase en retombant. Elle ne
+    // court pas avec la souris : elle la mange (« mange »), puis la recrache.
+    geante: {
+      rare: true, lourd: true, mange: true, base: 120,
+      marche: 30, course: 150, gueule: [28, -81], premierVol: [4000, 8000],
+      svg: '<svg viewBox="0 0 120 130" aria-hidden="true">'
+        + '<g class="patte-b"><rect x="40" y="100" width="17" height="22" rx="6" fill="#E3B28A" stroke="#A8775A" stroke-width="2"/>'
+        + '<ellipse cx="50" cy="125" rx="13" ry="5" fill="#4A3426"/></g>'
+        + '<ellipse cx="22" cy="72" rx="10" ry="20" transform="rotate(25 22 72)" fill="#E3B28A" stroke="#A8775A" stroke-width="2"/>'
+        // La robe, et le tablier.
+        + '<path d="M60 40C96 40 112 66 110 90 108 112 90 118 60 118 30 118 12 112 10 90 8 66 24 40 60 40z" fill="#8E3B46" stroke="#4E1F27" stroke-width="2.5"/>'
+        + '<path d="M62 58C84 58 98 74 96 96 94 110 82 114 66 112 60 96 58 76 62 58z" fill="#E8D7B0" stroke="#9C8458" stroke-width="2"/>'
+        + '<path d="M74 86h10v8H74z" fill="#C9A86A" stroke="#9C8458" stroke-width="1.5"/>'
+        // La tête : chignon, oreille, joue rose.
+        + '<circle cx="74" cy="32" r="25" fill="#F2C6A0" stroke="#B5835F" stroke-width="2.5"/>'
+        + '<circle cx="58" cy="9" r="10" fill="#6B4226" stroke="#3F2716" stroke-width="2"/>'
+        + '<path d="M50 26C50 10 66 4 80 8 88 10 94 16 96 22 86 16 70 16 58 24z" fill="#6B4226" stroke="#3F2716" stroke-width="2"/>'
+        + '<ellipse cx="57" cy="35" rx="5" ry="7" fill="#E3B28A" stroke="#B5835F" stroke-width="2"/>'
+        + '<ellipse cx="80" cy="42" rx="6" ry="4" fill="#E58C8C" opacity=".6"/>'
+        + '<path d="M78 22l10 3" stroke="#3F2716" stroke-width="2.5" stroke-linecap="round"/>'
+        + '<circle class="oeil" cx="84" cy="29" r="3" fill="#1E1A10"/>'
+        + '<ellipse cx="96" cy="34" rx="5" ry="4.5" fill="#EBB592" stroke="#B5835F" stroke-width="2"/>'
+        // Bouche fermée (sourire), ou grande ouverte pour manger.
+        + '<g class="bouche-fermee"><path d="M80 47C86 51 94 50 98 45" fill="none" stroke="#8A3B3B" stroke-width="2.5" stroke-linecap="round"/></g>'
+        + '<g class="bouche-ouverte"><ellipse cx="88" cy="49" rx="11" ry="9" fill="#3A1018" stroke="#2A0A10" stroke-width="2"/>'
+        + '<path d="M79 44h18l-2 4-2-3-2 3-2-3-2 3-2-3-2 3-2-3z" fill="#FFF4D6"/>'
+        + '<ellipse cx="88" cy="54" rx="6" ry="3" fill="#D9606E"/></g>'
+        // Le bras tendu vers la souris.
+        + '<path d="M86 70C100 64 108 58 112 50" fill="none" stroke="#B5835F" stroke-width="13" stroke-linecap="round"/>'
+        + '<path d="M86 70C100 64 108 58 112 50" fill="none" stroke="#F2C6A0" stroke-width="9" stroke-linecap="round"/>'
+        + '<g class="patte-a"><rect x="64" y="100" width="17" height="22" rx="6" fill="#F2C6A0" stroke="#B5835F" stroke-width="2"/>'
+        + '<ellipse cx="75" cy="125" rx="13" ry="5" fill="#4A3426"/></g>'
         + '</svg>'
     }
   };
@@ -151,6 +191,8 @@
     bouclier.hidden = false;
     curseur.classList.remove('shimeji-curseur--retour');
     curseur.hidden = false;
+    // La géante l'avale : on ne le voit plus jusqu'à ce qu'elle le recrache.
+    if (b.e.mange) curseur.hidden = true;
     b.etat = 'vol';
     b.debutVol = maintenant();
     b.auBord = 0;
@@ -162,6 +204,13 @@
     var b = voleur;
     if (!b) return;
     voleur = null;
+    // Recraché : il ressort de la bouche de la géante avant de filer.
+    if (b.e.mange) {
+      var g = b.gueule();
+      curseur.hidden = false;
+      placeCurseur(g[0], g[1], 0);
+      void curseur.offsetWidth;   // position de départ prise en compte avant la transition
+    }
     // Le faux curseur rejoint le vrai, puis le vrai réapparaît.
     curseur.classList.add('shimeji-curseur--retour');
     placeCurseur(souris.x, souris.y, 0);
@@ -211,7 +260,7 @@
 
     // Attrapé à la souris ou au doigt : il pend, puis tombe ou s'envole au lâcher.
     this.el.addEventListener('pointerdown', function (e) {
-      if (b === voleur) return;
+      if (b === voleur || b.etat === 'mort') return;
       e.preventDefault();
       b.el.setPointerCapture(e.pointerId);
       b.etat = 'tenu';
@@ -258,8 +307,13 @@
     this.h = this.el.offsetHeight;
   };
 
+  // Taille affichée par rapport au dessin : 1 pour les petits, 1,5 pour la géante.
+  Bestiole.prototype.echelle = function () {
+    return this.l / (this.e.base || 80);
+  };
+
   Bestiole.prototype.gueule = function () {
-    var k = this.l / 80;
+    var k = this.echelle();
     return [this.x + this.sens * this.e.gueule[0] * k, this.y + this.e.gueule[1] * k];
   };
 
@@ -280,7 +334,7 @@
 
   // Saut calculé pour que la gueule passe par la souris.
   Bestiole.prototype.saute = function () {
-    var k = this.l / 80;
+    var k = this.echelle();
     var cx = souris.x - this.sens * this.e.gueule[0] * k;
     var cy = Math.min(window.innerHeight, souris.y - this.e.gueule[1] * k);
     var dx = cx - this.x, dy = cy - this.y;
@@ -333,7 +387,7 @@
         var ecart = souris.x - this.x;
         this.sens = ecart < 0 ? -1 : 1;
         this.x += this.sens * Math.min(Math.abs(ecart), e.course * dt);
-        if (Math.abs(ecart) < 240) this.saute();
+        if (Math.abs(ecart) < 240 * this.echelle()) this.saute();
         break;
 
       case 'saut':
@@ -348,14 +402,16 @@
         if (Math.abs(this.vx) > 30) this.sens = this.vx < 0 ? -1 : 1;
         if (this.etat === 'saut' && !voleur && souris.dedans) {
           g = this.gueule();
-          if (Math.abs(g[0] - souris.x) < 34 && Math.abs(g[1] - souris.y) < 34) {
+          var portee = 34 * this.echelle();
+          if (Math.abs(g[0] - souris.x) < portee && Math.abs(g[1] - souris.y) < portee) {
             vole(this);
             break;
           }
         }
         if (this.y >= sol) {
           this.y = sol;
-          if (this.etat === 'chute' && this.vy > 700) {
+          if (e.lourd && this.vy > SEUIL_ECRASE) ecrase(this);
+          if (this.etat === 'chute' && this.vy > 700 && !e.lourd) {
             this.vy = -this.vy * 0.3;
             this.vx *= 0.6;
           } else if (this.etat === 'saut') {
@@ -369,6 +425,20 @@
         break;
 
       case 'vol':
+        if (e.mange) {
+          // La géante ne court pas : elle retombe, mâche la souris, puis la recrache.
+          if (this.y < sol) {
+            this.vy += GRAVITE * dt;
+            this.y += this.vy * dt;
+            if (this.y >= sol) {
+              this.y = sol;
+              if (this.vy > SEUIL_ECRASE) ecrase(this);
+              this.vy = 0;
+            }
+          }
+          if (secousse > SECOUSSE || t - this.debutVol > 2500) lache();
+          break;
+        }
         if (this.y < sol) {
           // Il retombe avec la souris, puis court vers le bord.
           this.vy += GRAVITE * dt;
@@ -391,7 +461,112 @@
         this.y = souris.y + this.h * 0.8;
         this.vx = this.vy = 0;
         break;
+
+      case 'mort':
+        // Tué en l'air (le pigeon), il tombe ; puis il reste couché jusqu'au nuage.
+        if (this.y < sol) {
+          this.vy += GRAVITE * dt;
+          this.y = Math.min(sol, this.y + this.vy * dt);
+        }
+        break;
     }
+  };
+
+  // --- la géante retombe : onde de choc, et les animaux autour meurent ---
+
+  var SEUIL_ECRASE = 900;   // vitesse de chute (px/s) au-delà de laquelle elle écrase
+
+  function ecrase(o) {
+    var rayon = 200 * o.echelle();   // 300 px pour la géante en taille normale
+    var onde = document.createElement('div');
+    onde.className = 'shimeji-onde';
+    onde.style.left = o.x + 'px';
+    onde.style.top = o.y + 'px';
+    onde.style.width = 2 * rayon + 'px';
+    onde.style.height = 0.4 * rayon + 'px';
+    scene.appendChild(onde);
+    setTimeout(function () { scene.removeChild(onde); }, 550);
+    // Tout le décor animé tremble (pas la page).
+    scene.classList.remove('shimeji-scene--secousse');
+    void scene.offsetWidth;
+    scene.classList.add('shimeji-scene--secousse');
+    for (var i = 0; i < bestioles.length; i++) {
+      var b = bestioles[i];
+      if (b === o || b.etat === 'mort') continue;
+      var dx = b.x - o.x, dy = (b.y - b.h / 2) - o.y;
+      if (dx * dx + dy * dy < rayon * rayon) {
+        b.meurt(o);
+        // Une géante écrasée par une autre : trou noir, là où elle est tombée.
+        if (b.e.rare) setTimeout(trouNoir.bind(null, b.x, b.y - b.h / 2), 500);
+      }
+    }
+  }
+
+  // --- deux géantes : le trou noir, puis l'erreur 067 ---
+
+  var apocalypse = false;
+
+  // Tout ce qui est à l'écran (en-tête, contenu, décor, animaux) tourne et
+  // rétrécit vers le trou, qui grandit jusqu'à couvrir l'écran.
+  function trouNoir(x, y) {
+    if (apocalypse) return;
+    apocalypse = true;
+    lache();
+    html.classList.remove('shimeji-vol');
+    html.style.overflow = 'hidden';
+    var aspires = Array.prototype.filter.call(document.body.children, function (el) {
+      return el !== curseur && el !== bouclier;
+    });
+    var trou = document.createElement('div');
+    trou.className = 'shimeji-trou-noir';
+    trou.style.left = x + 'px';
+    trou.style.top = y + 'px';
+    document.body.appendChild(trou);
+    aspires.forEach(function (el, i) {
+      var r = el.getBoundingClientRect();
+      el.style.transformOrigin = (x - r.left) + 'px ' + (y - r.top) + 'px';
+      el.style.transitionDelay = (0.25 + i * 0.08) + 's';
+    });
+    void document.body.offsetWidth;   // origines prises en compte avant la transition
+    aspires.forEach(function (el) { el.classList.add('shimeji-aspire'); });
+    setTimeout(erreur067, 2900);
+  }
+
+  // La page est remplacée par l'écran d'erreur ; le bouton (ou F5) recrée la réalité.
+  function erreur067() {
+    document.title = 'Erreur 067';
+    history.replaceState(null, '', '#erreur-067');
+    html.style.overflow = '';
+    document.body.className = 'erreur-067-page';
+    document.body.innerHTML = '<main class="erreur-067" role="alert">'
+      + '<p class="erreur-067__code">Erreur 067</p>'
+      + '<h1 class="erreur-067__titre">La réalité a été annihilée par La géante.</h1>'
+      + `<p class="erreur-067__texte">Amandine est retombée sur une sosie d'elle-même: la collision a ouvert un trou noir, qui a englouti la page.</p>`
+      + '<pre class="erreur-067__trace">RealityCollapseException: singularité détectée\n'
+      + '    at Amandine.retombe (shimeji.js)\n'
+      + '    at Univers.tick (big-bang.js:0:0)\n'
+      + '    at &lt;anonyme&gt; (néant)</pre>'
+      + '<button type="button" class="erreur-067__bouton">Recréer la réalité</button>'
+      + '</main>';
+    var bouton = document.querySelector('.erreur-067__bouton');
+    bouton.addEventListener('click', function () {
+      history.replaceState(null, '', location.pathname + location.search);
+      location.reload();
+    });
+    bouton.focus();
+  }
+
+  // Comme dans Minecraft : rouge, couché à 90° du côté opposé au choc, puis un
+  // nuage (pose « poof ») et il disparaît.
+  Bestiole.prototype.meurt = function (tueur) {
+    if (this === voleur) lache();
+    this.etat = 'mort';
+    this.vx = 0;
+    if (this.vy < 0) this.vy = 0;
+    this.finMort = maintenant() + 1200;
+    // Le dessin peut être retourné (sens) : l'angle est donné dans son repère.
+    var cote = this.x >= tueur.x ? 1 : -1;
+    this.el.style.setProperty('--chute', (cote * this.sens * 90) + 'deg');
   };
 
   Bestiole.prototype.chasse = function (t) {
@@ -431,7 +606,7 @@
   // Les états en vol ; renvoie false pour ceux qu'il partage avec les autres
   // (à terre, ou tenu à la main).
   Bestiole.prototype.avanceOiseau = function (dt, t) {
-    var largeur = window.innerWidth, sol = window.innerHeight, demi = this.l / 2, e = this.e, k = this.l / 80, g, d;
+    var largeur = window.innerWidth, sol = window.innerHeight, demi = this.l / 2, e = this.e, k = this.echelle(), g, d;
     switch (this.etat) {
       case 'envol':
         d = this.volVers(this.cible[0], this.cible[1], e.envol, dt);
@@ -503,7 +678,9 @@
 
   Bestiole.prototype.dessine = function (t) {
     var enLAir = this.y < window.innerHeight - 1;
-    var pose = this.e.ailes && enLAir && this.etat !== 'tenu' ? 'envol'
+    var pose = this.etat === 'mort' ? (t > this.finMort ? 'poof' : 'mort')
+             : this.e.mange && this.etat === 'vol' ? 'mange'
+             : this.e.ailes && enLAir && this.etat !== 'tenu' ? 'envol'
              : this.etat === 'vol' && enLAir ? 'saut' : POSES[this.etat];
     var classe = 'shimeji shimeji--' + this.espece + ' shimeji--' + pose + (this.sens < 0 ? ' shimeji--gauche' : '')
                + (this.finSortie && t < this.finSortie ? ' shimeji--sortie' : '');
@@ -521,21 +698,44 @@
   var bestioles = [];
   var avant = 0;
   function boucle(t) {
+    if (apocalypse) return;   // tout est figé, puis englouti
     var dt = Math.min(0.05, (t - avant) / 1000);   // onglet en arrière-plan : pas de bond
     avant = t;
     for (var i = 0; i < bestioles.length; i++) {
       bestioles[i].avance(dt, t);
       bestioles[i].dessine(t);
     }
+    // Les morts disparaissent une fois leur nuage passé.
+    for (var j = bestioles.length - 1; j >= 0; j--) {
+      if (bestioles[j].etat === 'mort' && t > bestioles[j].finMort + 350) {
+        scene.removeChild(bestioles[j].el);
+        bestioles.splice(j, 1);
+      }
+    }
     window.requestAnimationFrame(boucle);
   }
 
-  // --- un de chaque au départ, puis un de plus (au hasard) à chaque H + J ---
+  // --- un de chaque au départ, puis d'autres (au hasard) avec H + J ---
 
-  var MAX_ANIMAUX = 300;   // au-delà, la page rame
+  var MAX_ANIMAUX = 30000;   // au-delà, la page rame
+  var CADENCE = 1;       // ms entre deux animaux, H + J maintenus
 
   function ajoute(espece, depuisLaGauche) {
-    if (bestioles.length < MAX_ANIMAUX) bestioles.push(new Bestiole(espece, depuisLaGauche));
+    if (!apocalypse && bestioles.length < MAX_ANIMAUX) bestioles.push(new Bestiole(espece, depuisLaGauche));
+  }
+
+  // Mob rare : 5 % des apparitions (au chargement comme avec H + J). Plusieurs
+  // peuvent coexister : si l'une écrase l'autre, c'est le trou noir.
+  var CHANCE_GEANTE = 0.05;
+
+  function especeAuHasard() {
+    if (Math.random() < CHANCE_GEANTE) return 'geante';
+    var communes = Object.keys(ESPECES).filter(function (nom) { return !ESPECES[nom].rare; });
+    return communes[Math.floor(Math.random() * communes.length)];
+  }
+
+  function ajouteAuHasard() {
+    ajoute(especeAuHasard(), Math.random() < 0.5);
   }
 
   // Pas pendant une saisie : taper vite « hj » dans un champ ne fait rien venir.
@@ -544,29 +744,35 @@
       + ':not([type=radio]):not([type=button]):not([type=submit]):not([type=reset]):not([type=file])'));
   }
 
+  // H + J : un animal tout de suite, puis un toutes les CADENCE ms tant que les
+  // deux touches restent enfoncées. Une minuterie plutôt que la répétition du
+  // clavier, dont le délai et la vitesse changent d'un ordinateur à l'autre.
   // e.code : la position des touches, la même en AZERTY et en QWERTY.
-  var enfoncees = {}, combinaison = false;
+  var enfoncees = {}, minuterie = null;
+  function arrete() {
+    clearInterval(minuterie);
+    minuterie = null;
+  }
   document.addEventListener('keydown', function (e) {
     if (e.code !== 'KeyH' && e.code !== 'KeyJ') return;
     enfoncees[e.code] = true;
-    // Une fois par appui : la répétition d'une touche tenue ne compte pas, et
-    // Ctrl, Alt ou Cmd laissent leurs raccourcis au navigateur.
-    if (enfoncees.KeyH && enfoncees.KeyJ && !combinaison
+    // La répétition d'une touche tenue ne relance rien (la minuterie tourne
+    // déjà), et Ctrl, Alt ou Cmd laissent leurs raccourcis au navigateur.
+    if (enfoncees.KeyH && enfoncees.KeyJ && !minuterie
         && !e.ctrlKey && !e.altKey && !e.metaKey && !enSaisie(document.activeElement)) {
-      combinaison = true;
-      var especes = Object.keys(ESPECES);
-      ajoute(especes[Math.floor(Math.random() * especes.length)], Math.random() < 0.5);
+      ajouteAuHasard();
+      minuterie = setInterval(ajouteAuHasard, CADENCE);
     }
   });
   document.addEventListener('keyup', function (e) {
     if (e.code !== 'KeyH' && e.code !== 'KeyJ') return;
     enfoncees[e.code] = false;
-    combinaison = false;
+    arrete();
   });
   // Touches relâchées hors de la fenêtre : on repart de zéro.
   window.addEventListener('blur', function () {
     enfoncees = {};
-    combinaison = false;
+    arrete();
   });
 
   document.body.appendChild(scene);
@@ -575,6 +781,7 @@
   ajoute('capybara', true);
   ajoute('castor', false);
   ajoute('pigeon', Math.random() < 0.5);
+  if (Math.random() < CHANCE_GEANTE) ajoute('geante', Math.random() < 0.5);
   window.addEventListener('resize', function () {
     for (var i = 0; i < bestioles.length; i++) bestioles[i].mesure();
   });

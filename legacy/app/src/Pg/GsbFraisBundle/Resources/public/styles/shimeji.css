@@ -58,6 +58,49 @@
    scale s'ajoute au transform qui le retourne, sans l'écraser. */
 .shimeji--sortie .shimeji__sens { transform-origin: 50% 100%; animation: shimeji-sortie .6s ease-out both; }
 
+/* La géante, mob rare : bouche grande ouverte quand elle fonce sur la
+   souris, et qui mâche quand elle l'a avalée. */
+.shimeji--geante { width: 180px; height: 195px; }
+.shimeji--geante .bouche-ouverte { display: none; }
+.shimeji--geante.shimeji--course .bouche-ouverte,
+.shimeji--geante.shimeji--saut .bouche-ouverte { display: inline; }
+.shimeji--geante.shimeji--course .bouche-fermee,
+.shimeji--geante.shimeji--saut .bouche-fermee { display: none; }
+.shimeji--mange .bouche-ouverte { display: inline; animation: shimeji-mache .32s steps(1) infinite; }
+.shimeji--mange .shimeji__pose { animation: shimeji-dandine .16s linear infinite alternate; }
+
+/* Mort, à la Minecraft : rouge, couché à 90° (sens donné par --chute), puis un
+   nuage. Remonté de (80 - 56) / 2 = 12 px pour rester au-dessus du sol une fois
+   couché autour de son centre. */
+.shimeji--mort, .shimeji--poof { pointer-events: none; }
+.shimeji--mort svg, .shimeji--poof svg { filter: brightness(.8) sepia(1) saturate(9) hue-rotate(-35deg); }
+.shimeji--mort .shimeji__pose, .shimeji--poof .shimeji__pose {
+  transform-origin: 50% 50%;
+  transform: translateY(-12px) rotate(var(--chute, 90deg));
+  transition: transform .35s ease-in;
+}
+.shimeji--poof { animation: shimeji-poof .35s ease-out forwards; }
+
+/* L'onde de choc quand la géante retombe, et le décor animé qui tremble. */
+.shimeji-onde {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 3px solid rgba(255, 255, 255, .75);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: shimeji-onde .5s ease-out forwards;
+}
+.shimeji-scene--secousse { animation: shimeji-tremble .35s linear; }
+
+@keyframes shimeji-mache { 50% { opacity: 0; } }
+@keyframes shimeji-poof { to { opacity: 0; filter: blur(6px) grayscale(1); } }
+@keyframes shimeji-onde { from { scale: .15; opacity: 1; } to { scale: 1; opacity: 0; } }
+@keyframes shimeji-tremble {
+  20% { translate: -6px 3px; }
+  40% { translate: 5px -4px; }
+  60% { translate: -4px 2px; }
+  80% { translate: 3px -1px; }
+}
 @keyframes shimeji-pas { from { transform: rotate(-24deg); } to { transform: rotate(24deg); } }
 @keyframes shimeji-bat { from { transform: rotate(-55deg); } to { transform: rotate(20deg); } }
 @keyframes shimeji-plane { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(-4px) rotate(2deg); } }
@@ -89,4 +132,89 @@ html.shimeji-vol, html.shimeji-vol * { cursor: none !important; }
 
 @media (max-width: 900px) {
   .shimeji { width: 64px; height: 45px; }
+  .shimeji--geante { width: 126px; height: 137px; }
+  .shimeji--mort .shimeji__pose, .shimeji--poof .shimeji__pose { transform: translateY(-9.5px) rotate(var(--chute, 90deg)); }
+}
+
+/* --- le trou noir (une géante écrasée par une autre), puis l'erreur 067 --- */
+
+.shimeji-trou-noir {
+  position: fixed;
+  z-index: 3000;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  background: #000000;
+  box-shadow: 0 0 24px 10px rgba(255, 150, 60, .85), 0 0 70px 34px rgba(130, 50, 220, .55);
+  animation: shimeji-trou 2.8s cubic-bezier(.55, 0, .85, .35) forwards;
+}
+/* Le disque de matière qui tourne autour. */
+.shimeji-trou-noir::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: conic-gradient(#FF9A3C, #7A2CFF, #FF3D6E, #FFD36E, #FF9A3C);
+  -webkit-mask: radial-gradient(circle, transparent 56%, #000000 58%, #000000 70%, transparent 72%);
+  mask: radial-gradient(circle, transparent 56%, #000000 58%, #000000 70%, transparent 72%);
+  animation: shimeji-tourne .5s linear infinite;
+}
+/* Aspiré : il tourne et rétrécit vers le trou (origine posée par shimeji.js). */
+.shimeji-aspire {
+  transform: rotate(600deg) scale(0);
+  filter: blur(4px);
+  opacity: .3;
+  transition: transform 1.9s cubic-bezier(.6, 0, .9, .5), filter 1.9s, opacity 1.9s;
+}
+@keyframes shimeji-trou { 25% { scale: 1.6; } 100% { scale: 140; } }
+@keyframes shimeji-tourne { to { transform: rotate(360deg); } }
+
+.erreur-067-page {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(1px 1px at 12% 18%, #FFFFFF, transparent),
+    radial-gradient(1px 1px at 78% 12%, #FFFFFF, transparent),
+    radial-gradient(1.5px 1.5px at 64% 72%, #FFFFFF, transparent),
+    radial-gradient(1px 1px at 30% 84%, #FFFFFF, transparent),
+    radial-gradient(1px 1px at 90% 58%, #FFFFFF, transparent),
+    radial-gradient(ellipse at 50% 40%, #1B0B33 0%, #05030A 70%);
+  color: #F2F2F2;
+  font-family: var(--gsb-font-body);
+}
+.erreur-067 { max-width: 640px; padding: 32px 24px; text-align: center; }
+.erreur-067__code {
+  margin: 0;
+  font: 700 clamp(56px, 14vw, 120px)/1 var(--gsb-font-display);
+  letter-spacing: -.02em;
+  text-shadow: -3px 0 #FF2E63, 3px 0 #08F7FE;
+  animation: erreur-067-parasite 1.6s steps(2) infinite;
+}
+.erreur-067__titre { margin: 18px 0 8px; font: 700 clamp(22px, 5vw, 32px)/1.2 var(--gsb-font-display); }
+.erreur-067__texte { margin: 0 0 20px; opacity: .85; }
+.erreur-067__trace {
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .06);
+  color: #FF8FA3;
+  font-size: 13px;
+  text-align: left;
+}
+.erreur-067__bouton {
+  padding: 10px 22px;
+  border: 2px solid #FFD36E;
+  border-radius: 999px;
+  background: #FFD36E;
+  color: #1A1A1A;
+  font: 700 16px var(--gsb-font-body);
+  cursor: pointer;
+}
+.erreur-067__bouton:focus-visible { outline: 3px solid #FFFFFF; outline-offset: 3px; }
+@keyframes erreur-067-parasite {
+  50% { text-shadow: 3px 0 #FF2E63, -3px 0 #08F7FE; transform: translateX(1px); }
 }
